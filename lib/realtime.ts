@@ -10,14 +10,40 @@ export const channelName = (joinCode: string) => `session:${joinCode}`;
 
 /** Host: send a data-less event to every phone in the session. */
 export async function broadcastEvent(joinCode: string, event: SessionEvent): Promise<void> {
-  // TODO: subscribe to channelName(joinCode), send { type: "broadcast", event, payload: {} }, then unsubscribe
-  void getSupabase; void joinCode; void event;
-  throw new Error("not implemented: broadcastEvent");
+  const supabase = getSupabase();
+  const channel = supabase.channel(channelName(joinCode));
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") resolve();
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          reject(new Error(`broadcast channel ${status}`));
+        }
+      });
+    });
+
+    // Empty payload on purpose (hard rule 6): the group must never travel over
+    // a channel anyone can subscribe to.
+    await channel.send({ type: "broadcast", event, payload: {} });
+  } finally {
+    // The host page sends one event and is done; leaving the socket open would
+    // hold a connection for the rest of the event.
+    await supabase.removeChannel(channel);
+  }
 }
 
 /** Player: listen for events. Returns an unsubscribe function. */
 export function onSessionEvent(joinCode: string, handler: (event: SessionEvent) => void): () => void {
-  // TODO: subscribe to channelName(joinCode) for "started" and "ended"; call handler
-  void joinCode; void handler;
-  throw new Error("not implemented: onSessionEvent");
+  const supabase = getSupabase();
+  const channel = supabase.channel(channelName(joinCode));
+
+  channel
+    .on("broadcast", { event: "started" }, () => handler("started"))
+    .on("broadcast", { event: "ended" }, () => handler("ended"))
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
