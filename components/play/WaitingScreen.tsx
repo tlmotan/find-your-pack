@@ -3,7 +3,9 @@
 // An empty halyard and no flag. The screen is honest about having nothing yet,
 // which is what makes the hoist land when it comes.
 
-export function WaitingScreen() {
+type Props = { reconnecting?: boolean };
+
+export function WaitingScreen({ reconnecting = false }: Props) {
   return (
     <main className="flex min-h-dvh flex-col bg-ground px-5 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -17,7 +19,11 @@ export function WaitingScreen() {
 
       <div className="flex items-end justify-between border-t border-rule pt-4 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
         <span>No flag yet</span>
-        <span>Keep this page open</span>
+        {/* The group is not at stake here, so the honest thing is to say the
+            page is working on it rather than leave a confident tip up. */}
+        <span className={reconnecting ? "text-signal-yellow" : undefined}>
+          {reconnecting ? "Reconnecting…" : "Keep this page open"}
+        </span>
       </div>
     </main>
   );

@@ -12,10 +12,29 @@ export const MAX_DEFAULT_GROUPS = 10;
 export const MIN_PER_PACK = 3;
 export const MIN_PLAYERS_TO_START = 2;
 
+/** No request may outlive this. Double the waiting poll, so a slow reply still
+ *  lands before the next one is due. */
+export const RPC_TIMEOUT_MS = 10_000;
+
+/** Consecutive failed polls before a player is told anything. One dropped
+ *  request on venue wifi is normal and not worth mentioning. */
+export const OFFLINE_AFTER_FAILURES = 2;
+
 export const POLL_MS = {
   waiting: 5_000,
   afterReveal: 10_000,
   host: 3_000,
+  /** Waiting at the door for the lobby to open. Slow on purpose: the broadcast
+   *  is the fast path and this only covers a dropped websocket. */
+  notOpen: 10_000,
 } as const;
 
+/** Spread over the reveal fetch. Tight, because every phone must reveal
+ *  together. */
 export const START_JITTER_MS = 500;
+
+/** Spread over the join when the lobby opens. Deliberately wider than
+ *  START_JITTER_MS: nothing about joining has to be simultaneous, and
+ *  join_session is a write, so smearing a 150-phone burst across two seconds
+ *  instead of half a second costs nobody anything. */
+export const JOIN_JITTER_MS = 2_000;

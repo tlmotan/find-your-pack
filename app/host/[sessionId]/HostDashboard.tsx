@@ -24,6 +24,17 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(window.location.origin), []);
 
+  // Announcing is best-effort. The action already succeeded on the server, and
+  // every phone polls as a fallback, so a dropped websocket must never tell the
+  // host their tap failed.
+  async function announce(event: "opened" | "started" | "ended", joinCode: string) {
+    try {
+      await broadcastEvent(joinCode, event);
+    } catch {
+      // Swallowed on purpose: the poll fallback covers it.
+    }
+  }
+
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setActionError(null);
@@ -109,20 +120,28 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
               <HostControls
                 state={state}
                 busy={busy}
-                onOpenLobby={() => void run(async () => void (await openLobby(sessionId, hostSecret)))}
+                onOpenLobby={() =>
+                  void run(async () => {
+                    await openLobby(sessionId, hostSecret);
+                    // Only after the server has committed: a phone told too
+                    // early would try to join a session still 'scheduled'.
+                    // This is what lets everyone waiting at the door in.
+                    await announce("opened", state.join_code);
+                  })
+                }
                 onStart={() =>
                   void run(async () => {
                     await startSession(sessionId, hostSecret);
                     // Broadcast only after the server has committed, so no phone
                     // can ask for its group before one exists.
-                    await broadcastEvent(state.join_code, "started");
+                    await announce("started", state.join_code);
                   })
                 }
                 onEnd={() =>
                   void run(async () => {
                     // Broadcast BEFORE deleting: once the row is gone there is
                     // nothing left to announce from.
-                    await broadcastEvent(state.join_code, "ended");
+                    await announce("ended", state.join_code);
                     await endSession(sessionId, hostSecret);
                     setEnded(true);
                     // Stops useHostState polling a session that no longer
