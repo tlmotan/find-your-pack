@@ -1,18 +1,26 @@
 // After the reveal: group hidden, pack size still visible (PRD P4).
 //
-// Deliberately back to the plain white canvas. The pack colour is gone and the
-// group name is never rendered here — that absence is the whole game.
+// The flag is struck. An empty halyard where the field was is the whole point —
+// the screen has deliberately stopped being useful, and the room has to work.
 
 type Props = { packSize: number };
 
 export function HiddenScreen({ packSize }: Props) {
   return (
-    <main className="grid min-h-dvh place-items-center px-6 py-10 text-center">
-      <div className="w-full max-w-[440px]">
-        <h1 className="text-title text-balance font-extrabold tracking-tight text-ink">
-          Make your sound! <span aria-hidden="true">🔊</span>
+    <main className="flex min-h-dvh flex-col bg-ground px-5 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        {/* The halyard the flag came down from, left bare. */}
+        <div className="halyard h-24 w-px" aria-hidden="true" />
+
+        <h1 className="text-flag-name mt-8 text-balance font-extrabold tracking-[-0.03em] text-signal-yellow">
+          Make your sound!
         </h1>
-        <p className="text-body mt-4 text-xl tabular-nums">{packSize} in your pack</p>
+        <p className="mt-4 text-xl text-chalk">Find everyone making it too.</p>
+      </div>
+
+      <div className="flex items-end justify-between border-t border-rule pt-4 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
+        <span className="tabular-nums">{packSize} in your pack</span>
+        <span>Flag struck</span>
       </div>
     </main>
   );

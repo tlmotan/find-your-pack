@@ -81,8 +81,8 @@ export function SettingsForm({ onSubmit, submitLabel, busy = false }: Props) {
   return (
     <form onSubmit={handleSubmit} noValidate className="mx-auto w-full max-w-[640px]">
       <fieldset className="border-0 p-0">
-        <legend className="text-[15px] font-semibold text-ink">Groups</legend>
-        <p className="mt-1 text-[15px] text-muted">What each person will secretly become.</p>
+        <legend className="text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">Groups</legend>
+        <p className="mt-2 text-[15px] text-chalk-dim">What each person will secretly become.</p>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <SourceCard
@@ -103,7 +103,7 @@ export function SettingsForm({ onSubmit, submitLabel, busy = false }: Props) {
 
         {source === "custom" ? (
           <div className="mt-4">
-            <label htmlFor={customId} className="block text-[15px] font-semibold text-ink">
+            <label htmlFor={customId} className="block text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
               Group names
             </label>
             <textarea
@@ -112,22 +112,26 @@ export function SettingsForm({ onSubmit, submitLabel, busy = false }: Props) {
               rows={6}
               value={customNames}
               onChange={(e) => setCustomNames(e.target.value)}
-              placeholder={"Lions\nTigers\nBears"}
-              className="mt-2 w-full rounded-md border-[1.5px] border-hairline bg-canvas p-3 text-base text-ink transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-soft)]"
+              placeholder={"Lions\nTigers\nBears\n…"}
+              className="mt-3 w-full rounded-md border-2 border-rule bg-ground-raised p-3 text-base text-chalk transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_rgba(255,209,0,0.25)]"
             />
-            <p className="mt-2 text-[15px] text-muted">
-              One per line. {GROUP_OPTIONS.min}–{GROUP_OPTIONS.max} groups.{" "}
+            <p className="mt-3 text-[15px] text-chalk-dim">
+              One per line.{" "}
+              <span className="whitespace-nowrap">
+                {GROUP_OPTIONS.min}–{GROUP_OPTIONS.max} groups
+              </span>
+              .{" "}
               {customGroups.length > 0 ? `You have ${customGroups.length}.` : null}
             </p>
           </div>
         ) : null}
       </fieldset>
 
-      <hr className="my-8 border-hairline" />
+      <hr className="my-10 border-rule" />
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label htmlFor={revealId} className="block text-[15px] font-semibold text-ink">
+          <label htmlFor={revealId} className="block text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
             Show the group for
           </label>
           <div className="mt-2 flex items-center gap-3">
@@ -140,17 +144,21 @@ export function SettingsForm({ onSubmit, submitLabel, busy = false }: Props) {
               max={REVEAL_SECONDS.max}
               value={revealSeconds}
               onChange={(e) => setRevealSeconds(Number(e.target.value))}
-              className="h-13 w-24 rounded-md border-[1.5px] border-hairline bg-canvas px-3 text-base tabular-nums text-ink transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-soft)]"
+              className="h-14 w-24 rounded-md border-2 border-rule bg-ground-raised px-3 text-base tabular-nums text-chalk transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_rgba(255,209,0,0.25)]"
             />
-            <span className="text-base text-body">seconds</span>
+            <span className="text-base text-chalk-dim">seconds</span>
           </div>
-          <p className="mt-2 text-[15px] text-muted">
-            Then it hides and they make the sound. {REVEAL_SECONDS.min}–{REVEAL_SECONDS.max}.
+          <p className="mt-3 text-[15px] text-chalk-dim">
+            Then it hides and they make the sound.{" "}
+            <span className="whitespace-nowrap">
+              {REVEAL_SECONDS.min}–{REVEAL_SECONDS.max}
+            </span>
+            .
           </p>
         </div>
 
         <div>
-          <label htmlFor={daysId} className="block text-[15px] font-semibold text-ink">
+          <label htmlFor={daysId} className="block text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
             Keep this game for
           </label>
           <select
@@ -158,15 +166,16 @@ export function SettingsForm({ onSubmit, submitLabel, busy = false }: Props) {
             name="expires-in-days"
             value={expiresInDays}
             onChange={(e) => setExpiresInDays(Number(e.target.value))}
-            className="mt-2 h-13 w-full rounded-md border-[1.5px] border-hairline bg-canvas px-3 text-base text-ink transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-soft)]"
+            className="mt-3 h-14 w-full rounded-md border-2 border-rule bg-ground-raised px-3 text-base text-chalk transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_rgba(255,209,0,0.25)]"
           >
             {Array.from({ length: EXPIRES_IN_DAYS.max }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={d}>
+              // Windows dark mode ignores a select's colours on its options.
+              <option key={d} value={d} className="bg-ground-raised text-chalk">
                 {d === 1 ? "1 day" : `${d} days`}
               </option>
             ))}
           </select>
-          <p className="mt-2 text-[15px] text-muted">
+          <p className="mt-3 text-[15px] text-chalk-dim">
             Make the QR code early; it works until then, then deletes itself.
           </p>
         </div>
@@ -186,7 +195,7 @@ export function SettingsForm({ onSubmit, submitLabel, busy = false }: Props) {
       <button
         type="submit"
         disabled={busy}
-        className="rounded-pill mt-8 h-14 w-full bg-accent text-lg font-semibold text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:cursor-wait disabled:active:scale-100"
+        className="rounded-pill mt-10 h-14 w-full bg-accent text-lg font-extrabold tracking-[-0.01em] text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:cursor-wait disabled:active:scale-100"
       >
         {busy ? "Creating…" : submitLabel}
       </button>
@@ -211,8 +220,10 @@ function SourceCard({
 }) {
   return (
     <label
-      className={`block cursor-pointer rounded-lg border-[1.5px] p-4 transition-[border-color,background-color] duration-150 ${
-        checked ? "border-accent bg-accent-soft" : "border-hairline bg-canvas hover:border-muted"
+      className={`block cursor-pointer rounded-md border-2 p-4 transition-[border-color,background-color] duration-150 ${
+        checked
+          ? "border-accent bg-ground-raised"
+          : "border-rule bg-ground hover:border-chalk-dim"
       }`}
     >
       <input
@@ -225,8 +236,8 @@ function SourceCard({
       <span className="block text-2xl" aria-hidden="true">
         {sample}
       </span>
-      <span className="mt-2 block text-base font-semibold text-ink">{title}</span>
-      <span className="mt-0.5 block text-[15px] text-muted">{detail}</span>
+      <span className="mt-3 block text-base font-semibold text-chalk">{title}</span>
+      <span className="mt-1 block text-[15px] text-chalk-dim">{detail}</span>
     </label>
   );
 }

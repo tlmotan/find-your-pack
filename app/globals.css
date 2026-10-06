@@ -1,123 +1,81 @@
 @import "tailwindcss";
 
-/* Design tokens — the single source is DESIGN.md at the repo root.
-   Change a value there and here together, never one alone. */
+/* Signal Flags. Design tokens — the built world is the source; DESIGN.md is
+   written from it at finish. See the direction contract in app/layout.tsx. */
 @theme static {
-  /* Brand — accent only ever means "this is the thing to press" */
-  --color-accent: #1f6afe;
-  --color-accent-pressed: #164fc4;
-  --color-accent-soft: #eaf1ff;
-  --color-on-accent: #ffffff;
+  /* Ground. A dim hall with a bright stage: a white screen is a flashbulb in
+     someone's face, so the whole app sits on deep navy and the flags are the
+     only bright thing. */
+  --color-ground: #0a1626;
+  --color-ground-deep: #06101c;
+  --color-ground-raised: #132235;
+  --color-rule: #2c4259;
 
-  /* Text */
-  --color-ink: #0e1726;
-  --color-body: #3c4859;
-  --color-muted: #6b7686;
+  /* Ink on the ground */
+  --color-chalk: #f4f6f8;
+  --color-chalk-dim: #9fb0c4;
 
-  /* Surface */
-  --color-canvas: #ffffff;
-  --color-surface: #f5f7fa;
-  --color-hairline: #e3e8ef;
+  /* The five signal colours, at the saturation flags actually use. These are
+     flag fields, not UI colours: never set small text in red or blue on the
+     ground, where they fall below 3:1. */
+  --color-signal-red: #c8102e;
+  --color-signal-yellow: #ffd100;
+  --color-signal-blue: #0047bb;
+  --color-signal-white: #ffffff;
+  --color-signal-black: #0a0a0a;
 
-  /* Semantic */
-  --color-success: #15803d;
-  --color-warning: #b45309;
-  --color-danger: #dc2626;
+  /* Yellow is the action colour: 12.4:1 on the ground, and the most visible
+     thing in a dark room. Labels on it are near-black at 13.6:1. */
+  --color-accent: #ffd100;
+  --color-accent-pressed: #e0b800;
+  --color-on-accent: #0a0a0a;
 
-  /* Reveal palette — one full-bleed background per group, always with white
-     text. Every value is >= 4.5:1 against white (verified 4.6:1-6.3:1).
-     Index with (groupIndex % 12) + 1; see DESIGN.md section 2. */
-  --color-pack-1: #1f6afe;
-  --color-pack-2: #4f46e5;
-  --color-pack-3: #7c3aed;
-  --color-pack-4: #9333ea;
-  --color-pack-5: #db2777;
-  --color-pack-6: #be123c;
-  --color-pack-7: #dc2626;
-  --color-pack-8: #c2410c;
-  --color-pack-9: #b45309;
-  --color-pack-10: #15803d;
-  --color-pack-11: #0f766e;
-  --color-pack-12: #0369a1;
+  --color-danger: #ff6b6b;
+  --color-success: #4ade80;
 
-  /* Type — system fonts only; no font bytes over mobile data */
+  /* Type. System stack only: zero font bytes on venue mobile data. */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Sizes that scale with the viewport, so one value serves both a 360px
-     phone and a projector. */
-  --text-countdown: clamp(6rem, 42vw, 10rem);
-  --text-countdown--line-height: 1;
-  --text-reveal-emoji: clamp(5rem, 30vw, 8rem);
-  --text-reveal-name: clamp(2.5rem, 12vw, 4.5rem);
-  --text-reveal-name--line-height: 1.05;
-  --text-projected: clamp(4rem, 14vw, 8rem);
-  --text-projected--line-height: 1;
-  --text-title: clamp(1.75rem, 7vw, 2rem);
-  --text-title--line-height: 1.15;
-  --text-code: 2rem;
+  --text-countdown: clamp(7rem, 46vw, 13rem);
+  --text-countdown--line-height: 0.85;
+  --text-flag-name: clamp(2.75rem, 13vw, 5rem);
+  --text-flag-name--line-height: 0.95;
+  --text-projected: clamp(5rem, 16vw, 11rem);
+  --text-projected--line-height: 0.85;
+  --text-title: clamp(1.875rem, 7vw, 2.25rem);
+  --text-title--line-height: 1.1;
+  --text-code: clamp(1.75rem, 9vw, 2.25rem);
 
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  /* Flags are cut, not rounded. Only interactive chrome gets a radius. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
   --radius-pill: 9999px;
 }
 
-/* The one motion moment in the app (DESIGN.md s9). Nothing exceeds 300ms. */
-@keyframes pack-fade-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes pack-emoji-in {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-}
-
-@keyframes countdown-tick {
-  from {
-    opacity: 0;
-    transform: scale(1.1);
-  }
-}
-
-.countdown-tick {
-  animation: countdown-tick 200ms ease-out both;
-}
-
-.reveal-enter {
-  animation: pack-fade-in 250ms ease-out both;
-}
-
-.reveal-emoji {
-  animation: pack-emoji-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-/* The app is light-first and committed: no dark mode in v1. Host screens are
-   projected, and projectors render dark backgrounds as muddy grey. */
 html {
-  color-scheme: light;
-  background: var(--color-canvas);
-  /* Every screen is exactly one viewport tall; rubber-banding past it reads as
-     a glitch mid-game. */
-  overscroll-behavior: none;
+  color-scheme: dark;
+  background: var(--color-ground);
+}
+
+/* Rubber-banding past a one-viewport screen reads as a glitch mid-game, but
+   unscoped this also kills pull-to-refresh and swipe-back on every phone in the
+   room - which is every player's device. Fine pointers only. */
+@media (pointer: fine) {
+  html {
+    overscroll-behavior: none;
+  }
 }
 
 body {
-  background: var(--color-canvas);
-  color: var(--color-body);
+  background: var(--color-ground);
+  color: var(--color-chalk);
   font-family: var(--font-sans);
-  /* Stop iOS from inflating text in landscape on the host's screen. */
   -webkit-text-size-adjust: 100%;
-  /* The pill button has its own press state; the default grey flash fights it. */
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Drop the legacy 300ms tap delay on everything a player actually taps. */
 a,
 button,
 input,
@@ -127,24 +85,21 @@ textarea {
   touch-action: manipulation;
 }
 
-/* Browser surfaces we did not draw, themed from the palette rather than left
-   as OS defaults: selection, the text caret, and the keyboard focus ring. */
+/* Browser surfaces themed from the palette rather than left as OS defaults. */
 ::selection {
-  background: var(--color-accent-soft);
-  color: var(--color-ink);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 :focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 input {
   caret-color: var(--color-accent);
 }
 
-/* Inputs carry the DESIGN.md focus treatment (accent border + soft ring)
-   instead, so they must not also draw the global outline. */
 input:focus-visible {
   outline: none;
 }
@@ -154,6 +109,66 @@ input,
 select,
 textarea {
   font-size: max(1rem, 1em);
+}
+
+/* ---------------------------------------------------------------------------
+   The one authored motion: a flag being run up and snapping taut. Everything
+   else in the app holds still so this reads as the moment it is.
+   --------------------------------------------------------------------------- */
+@keyframes hoist {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes snap-taut {
+  from {
+    transform: scaleY(1.06) scaleX(0.97);
+  }
+  to {
+    transform: scaleY(1) scaleX(1);
+  }
+}
+
+@keyframes count-strike {
+  from {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+.hoist {
+  /* The flag runs up the full height of its own clipping box: a real hoist,
+     not a nudge. It is the one authored motion in the app, so it is allowed to
+     take the time a hoist actually takes. */
+  animation: hoist 620ms cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+.snap-taut {
+  /* The transform target is an <svg>, whose default transform-box is view-box;
+     fill-box pins the origin to the flag's own edges in every browser. */
+  transform-box: fill-box;
+  /* Exponential ease-out, not overshoot: the snap is carried by how fast it
+     decelerates, and an elastic wobble would read as a bounce effect. */
+  animation: snap-taut 240ms cubic-bezier(0.16, 1, 0.3, 1) 560ms both;
+}
+
+.count-strike {
+  animation: count-strike 200ms cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+/* The halyard: a hairline the flag runs up, drawn rather than decorated. */
+.halyard {
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-rule) 0 60%,
+    transparent 60% 100%
+  );
+  background-size: 1px 10px;
+  background-repeat: repeat-y;
 }
 
 @media (prefers-reduced-motion: reduce) {

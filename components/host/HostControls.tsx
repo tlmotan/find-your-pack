@@ -17,7 +17,7 @@ type Props = {
 };
 
 const primary =
-  "rounded-pill h-14 w-full bg-accent text-lg font-semibold text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:bg-hairline disabled:text-body disabled:active:scale-100";
+  "rounded-pill h-14 w-full bg-accent text-lg font-extrabold tracking-[-0.01em] text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:bg-ground-raised disabled:text-chalk-dim disabled:active:scale-100";
 
 export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd }: Props) {
   const [confirmingEnd, setConfirmingEnd] = useState(false);
@@ -30,7 +30,7 @@ export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd 
           <button type="button" className={primary} disabled={busy} onClick={onOpenLobby}>
             {busy ? "Opening…" : "Open lobby"}
           </button>
-          <p className="mt-3 text-center text-[15px] text-muted">
+          <p className="mt-4 text-center text-[15px] text-chalk-dim">
             Nobody can join until you do. Scanning early shows &ldquo;not open yet&rdquo;.
           </p>
         </>
@@ -48,7 +48,7 @@ export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd 
           >
             {busy ? "Starting…" : "Start the game"}
           </button>
-          <p className="mt-3 text-center text-[15px] text-muted">
+          <p className="mt-4 text-center text-[15px] text-chalk-dim">
             {enoughPlayers
               ? "Everyone reveals at the same moment."
               : `Waiting for ${MIN_PLAYERS_TO_START} players to join.`}
@@ -60,7 +60,7 @@ export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd 
       <div className="mt-8 text-center">
         {confirmingEnd ? (
           <div role="group" aria-label="Confirm ending the game">
-            <p className="text-[15px] text-body">
+            <p className="text-[15px] text-chalk">
               End the game and delete it? Players lose their groups.
             </p>
             <div className="mt-3 flex justify-center gap-3">
@@ -75,7 +75,7 @@ export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd 
               <button
                 type="button"
                 onClick={() => setConfirmingEnd(false)}
-                className="rounded-pill h-12 border-[1.5px] border-hairline px-6 text-base font-semibold text-ink"
+                className="rounded-pill h-12 border-2 border-rule px-6 text-base font-semibold text-chalk"
               >
                 Keep playing
               </button>
@@ -85,7 +85,7 @@ export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd 
           <button
             type="button"
             onClick={() => setConfirmingEnd(true)}
-            className="rounded-sm text-[15px] font-semibold text-muted transition-colors hover:text-danger"
+            className="rounded-sm text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase transition-colors hover:text-danger"
           >
             End game
           </button>

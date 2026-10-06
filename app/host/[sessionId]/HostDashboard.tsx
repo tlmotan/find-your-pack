@@ -31,7 +31,7 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
       await action();
       await refresh();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "That didn't work. Try again.");
+      setActionError(e instanceof Error ? e.message : "That didn’t work. Try again.");
     } finally {
       setBusy(false);
     }
@@ -39,14 +39,14 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
 
   if (!hostSecret) {
     return (
-      <main className="grid min-h-dvh place-items-center px-6 py-12 text-center">
+      <main className="grid min-h-dvh place-items-center bg-ground px-6 py-12 text-center">
         <div className="max-w-[440px]">
-          <h1 className="text-title font-extrabold tracking-tight text-ink">
+          <h1 className="text-title text-balance font-extrabold tracking-[-0.02em] text-chalk">
             This host link is missing its key
           </h1>
-          <p className="mt-3 text-lg text-body">
-            Open the full link you saved — the part after the <code className="font-mono">#</code>{" "}
-            is what proves you&apos;re the host.
+          <p className="mt-3 text-lg text-chalk-dim">
+            Open the full link you saved — the part after the <code className="font-mono text-signal-yellow">#</code>{" "}
+            is what proves you&rsquo;re the host.
           </p>
         </div>
       </main>
@@ -55,10 +55,10 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
 
   if (ended) {
     return (
-      <main className="grid min-h-dvh place-items-center px-6 py-12 text-center">
+      <main className="grid min-h-dvh place-items-center bg-ground px-6 py-12 text-center">
         <div className="max-w-[440px]">
-          <h1 className="text-title font-extrabold tracking-tight text-ink">Game ended</h1>
-          <p className="mt-3 text-lg text-body">Everything has been deleted. Nothing was kept.</p>
+          <h1 className="text-title text-balance font-extrabold tracking-[-0.02em] text-chalk">Game ended</h1>
+          <p className="mt-3 text-lg text-chalk-dim">Everything has been deleted. Nothing was kept.</p>
         </div>
       </main>
     );
@@ -66,8 +66,8 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
 
   if (!state) {
     return (
-      <main className="grid min-h-dvh place-items-center px-6 py-12 text-center">
-        <p className="text-lg text-muted">{error ? "Couldn't load this game." : "Loading…"}</p>
+      <main className="grid min-h-dvh place-items-center bg-ground px-6 py-12 text-center">
+        <p className="text-lg text-chalk-dim">{error ? "Couldn’t load this game." : "Loading…"}</p>
       </main>
     );
   }
@@ -75,10 +75,10 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
   const started = state.status === "started";
 
   return (
-    <main className="min-h-dvh px-6 py-12">
+    <main className="min-h-dvh bg-ground px-5 py-12">
       <div className="mx-auto w-full max-w-[640px] lg:max-w-[1100px]">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-title font-extrabold tracking-tight text-ink">Find Your Pack</h1>
+          <h1 className="text-title text-balance font-extrabold tracking-[-0.02em] text-chalk">Find Your Pack</h1>
           <StatusPill status={state.status} />
         </div>
 
@@ -89,7 +89,7 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
             <JoinQrCode joinUrl={buildJoinLink(origin, state.join_code)} joinCode={state.join_code} />
           ) : (
             <section>
-              <h2 className="text-[15px] font-semibold text-ink">Packs</h2>
+              <h2 className="text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">Packs</h2>
               <div className="mt-3">
                 <GroupSizes groups={state.group_sizes} />
               </div>
@@ -98,10 +98,10 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
 
           <section>
             {/* Projector-sized: this number is read from the back of the room. */}
-            <p className="text-projected font-extrabold tabular-nums tracking-tight text-accent">
+            <p className="text-projected font-extrabold tabular-nums tracking-[-0.05em] text-signal-yellow">
               {state.active_count}
             </p>
-            <p className="-mt-2 text-xl text-muted">
+            <p className="mt-1 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
               {state.active_count === 1 ? "phone joined" : "phones joined"}
             </p>
 
@@ -134,7 +134,7 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
             </div>
 
             {actionError ? (
-              <p role="alert" className="mt-4 text-[15px] text-danger">
+              <p role="alert" className="mt-5 text-[15px] text-danger">
                 {actionError}
               </p>
             ) : null}
@@ -149,10 +149,14 @@ function StatusPill({ status }: { status: string }) {
   const label = status === "scheduled" ? "Not open yet" : status === "lobby" ? "Lobby open" : "Playing";
   const tone =
     status === "lobby"
-      ? "bg-accent-soft text-accent"
+      ? "bg-accent text-on-accent"
       : status === "started"
-        ? "bg-surface text-success"
-        : "bg-surface text-muted";
+        ? "border border-rule text-success"
+        : "border border-rule text-chalk-dim";
 
-  return <span className={`rounded-pill px-3.5 py-1.5 text-[15px] font-semibold ${tone}`}>{label}</span>;
+  return (
+    <span className={`rounded-pill px-3.5 py-1.5 text-[13px] font-semibold tracking-[0.14em] uppercase ${tone}`}>
+      {label}
+    </span>
+  );
 }

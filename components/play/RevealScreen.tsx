@@ -1,9 +1,10 @@
 // Shows the player's group for reveal_seconds (PRD P3).
 //
-// The one loud screen in the app: full-bleed pack colour, white text, giant
-// emoji. Everything else stays white so this lands (DESIGN.md section 1).
+// The one loud screen. The flag is run up the halyard and snaps taut — the
+// single authored motion in the app (see the direction contract in layout.tsx).
 
-import { packColorVar } from "@/lib/pack-color";
+import { SignalFlag } from "@/components/play/SignalFlag";
+import { packFlag } from "@/lib/pack-flag";
 
 type Props = {
   name: string;
@@ -14,38 +15,44 @@ type Props = {
 };
 
 export function RevealScreen({ name, emoji, soundHint, packSize, secondsLeft }: Props) {
+  const flag = packFlag(name);
+
   return (
-    <main
-      // pb clears the iPhone home indicator: this is the app's only
-      // full-bleed screen, so nothing else reaches the bottom edge.
-      className="reveal-enter flex min-h-dvh flex-col px-6 pt-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-center text-white"
-      style={{ background: packColorVar(name) }}
-    >
+    <main className="flex min-h-dvh flex-col bg-ground px-5 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="flex flex-1 flex-col items-center justify-center">
-        <div className="flex w-full max-w-[440px] flex-col items-center">
-          {emoji ? (
-            <p className="reveal-emoji text-reveal-emoji leading-none" aria-hidden="true">
-              {emoji}
-            </p>
-          ) : null}
-
-          {/* One live region for the whole reveal, so a screen reader
-              announces the group once rather than field by field. */}
-          <div aria-live="polite">
-            <h1 className="text-reveal-name mt-4 text-balance font-extrabold tracking-tight">{name}</h1>
-            {soundHint ? <p className="mt-3 text-2xl font-semibold">{soundHint}</p> : null}
+        {/* Full-bleed field at the flag's own 3:2. Nothing is laid over it:
+            text on a checkerboard or a saltire is unreadable, and a flag with a
+            caption printed across it is not a flag. */}
+        {/* The outer box clips; the inner one rises through it, so the flag
+            appears to run up a line rather than fade into place. */}
+        <div className="-mx-5 w-screen max-w-[100vw] overflow-hidden">
+          <div className="hoist">
+            <SignalFlag
+              id={flag.id}
+              className="snap-taut block h-auto w-full origin-bottom"
+              // 3:2, stated so the box is reserved before paint and nothing jumps.
+              style={{ aspectRatio: "3 / 2" }}
+            />
           </div>
+        </div>
 
-          <p className="mt-8 rounded-pill bg-white/15 px-5 py-2 text-lg font-semibold">
-            {packSize} in your pack
-          </p>
+        <div aria-live="polite" className="mt-7 w-full text-center">
+          <h1 className="text-flag-name text-balance font-extrabold tracking-[-0.03em] text-chalk">
+            {emoji ? <span aria-hidden="true">{emoji} </span> : null}
+            {name}
+          </h1>
+          {soundHint ? (
+            <p className="mt-3 text-2xl font-semibold text-signal-yellow">{soundHint}</p>
+          ) : null}
         </div>
       </div>
 
-      {/* tabular-nums: the digit changes every second and must not reflow. */}
-      <p className="mt-6 text-sm tabular-nums text-white/70">
-        Hiding in {Math.max(0, Math.ceil(secondsLeft))}s
-      </p>
+      {/* Code-book margin: the facts, set small and tracked, never competing
+          with the field above. */}
+      <div className="flex items-end justify-between border-t border-rule pt-4 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
+        <span className="tabular-nums">{packSize} in your pack</span>
+        <span className="tabular-nums">Hiding in {Math.max(0, Math.ceil(secondsLeft))}s</span>
+      </div>
     </main>
   );
 }

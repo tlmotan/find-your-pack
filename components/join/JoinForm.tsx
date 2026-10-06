@@ -23,8 +23,7 @@ export function JoinForm() {
     const message = joinCodeError(code);
     if (message) {
       setError(message);
-      // Put the cursor back where the fix happens, rather than leaving it on
-      // the button they just pressed.
+      // Put the cursor back where the fix happens, not on the button.
       inputRef.current?.focus();
       return;
     }
@@ -34,7 +33,10 @@ export function JoinForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <label htmlFor={inputId} className="block text-[15px] font-semibold text-ink">
+      <label
+        htmlFor={inputId}
+        className="block text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase"
+      >
         Join code
       </label>
 
@@ -42,10 +44,10 @@ export function JoinForm() {
         id={inputId}
         ref={inputRef}
         name="join-code"
+        translate="no"
         value={code}
         onChange={(e) => {
           setCode(normalizeJoinCode(e.target.value));
-          // Clear a stale complaint the moment they start fixing it.
           if (error) setError(null);
         }}
         // A venue keyboard should offer capitals and no autocorrect: this is a
@@ -57,30 +59,29 @@ export function JoinForm() {
         inputMode="text"
         enterKeyHint="go"
         maxLength={JOIN_CODE_LENGTH}
-        aria-describedby={error ? `${hintId} ${inputId}-error` : hintId}
+        aria-describedby={error ? `${inputId}-error` : hintId}
         aria-invalid={error ? true : undefined}
-        className={`text-code mt-2 h-16 w-full rounded-md border-[1.5px] bg-canvas text-center font-mono font-extrabold tracking-[0.12em] text-ink transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-soft)] ${
-          error ? "border-danger" : "border-hairline"
+        className={`text-code mt-3 h-[4.5rem] w-full rounded-md border-2 bg-ground-raised text-center font-mono font-extrabold tracking-[0.18em] text-chalk transition-[border-color,box-shadow] duration-150 focus:border-accent focus:shadow-[0_0_0_3px_rgba(255,209,0,0.25)] ${
+          error ? "border-danger" : "border-rule"
         }`}
       />
 
       {error ? (
-        <p id={`${inputId}-error`} role="alert" className="mt-2 text-[15px] text-danger">
+        <p id={`${inputId}-error`} role="alert" className="mt-3 text-[15px] text-danger">
           {error}
         </p>
       ) : (
-        <p id={hintId} className="mt-2 text-[15px] text-muted">
-          6 characters, from the host’s screen.
+        <p id={hintId} className="mt-3 text-[15px] text-chalk-dim">
+          Six characters, from the host&rsquo;s screen.
         </p>
       )}
 
       <button
         type="submit"
         disabled={submitting}
-        // Stays accent-filled while in flight: a button that greys out
-        // mid-action reads as broken, and "Joining…" already says it is busy.
-        // Grey-on-hairline would also only reach 3.7:1.
-        className="rounded-pill mt-5 h-14 w-full bg-accent text-lg font-semibold text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:cursor-wait disabled:active:scale-100"
+        // Stays yellow while in flight: a button that greys out mid-action
+        // reads as broken, and "Joining…" already says it is busy.
+        className="rounded-pill mt-6 h-14 w-full bg-accent text-lg font-extrabold tracking-[-0.01em] text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:cursor-wait disabled:active:scale-100"
       >
         {submitting ? "Joining…" : "Join the game"}
       </button>

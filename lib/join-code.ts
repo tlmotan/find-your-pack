@@ -41,7 +41,7 @@ export function joinCodeError(code: string): string | null {
     return "Codes are 6 characters long.";
   }
   if (!joinCodeSchema.safeParse(value).success) {
-    return "That code doesn't look right — check the host’s screen.";
+    return "That code doesn’t look right — check the host’s screen.";
   }
   return null;
 }

@@ -51,13 +51,13 @@ export function JoinRedirect({ joinCode }: { joinCode: string }) {
 
   switch (phase) {
     case "bad_code":
-      return <StatusScreen title="That code doesn't look right" body="Check the host's screen and try again." />;
+      return <StatusScreen title="That code doesn’t look right" body="Check the host’s screen and try again." />;
     case "not_open":
-      return <StatusScreen title="This game hasn't opened yet" body="Hang on for the host, then scan again." />;
+      return <StatusScreen title="This game hasn’t opened yet" body="Hang on for the host, then scan again." />;
     case "ended":
       return <StatusScreen title="This game has ended" />;
     case "error":
-      return <StatusScreen title="Couldn't join" body="Check your connection and try again." />;
+      return <StatusScreen title="Couldn’t join" body="Check your connection and try again." />;
     default:
       return <StatusScreen title="Joining…" />;
   }

@@ -50,7 +50,7 @@ export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCod
       return <HiddenScreen packSize={packSizeOf(state)} />;
 
     case "not_open":
-      return <StatusScreen title="This game hasn't opened yet" />;
+      return <StatusScreen title="This game hasn’t opened yet" />;
 
     case "ended":
       return <StatusScreen title="This game has ended" />;

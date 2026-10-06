@@ -26,7 +26,7 @@ export default function NewHostPage() {
       // server or write to logs (lib/host-secret.ts).
       setHostLink(buildHostLink(window.location.origin, result.session_id, result.host_secret));
     } catch {
-      setError("Couldn't create the game. Check your connection and try again.");
+      setError("Couldn’t create the game. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -34,7 +34,7 @@ export default function NewHostPage() {
 
   if (hostLink) {
     return (
-      <main className="min-h-dvh px-6 py-12">
+      <main className="min-h-dvh bg-ground px-5 py-12">
         <HostLinkCard
           hostLink={hostLink}
           // push, not replace: Back should return to this card, because losing
@@ -46,13 +46,13 @@ export default function NewHostPage() {
   }
 
   return (
-    <main className="min-h-dvh px-6 py-12">
+    <main className="min-h-dvh bg-ground px-5 py-12">
       <div className="mx-auto w-full max-w-[640px]">
-        <h1 className="text-title text-balance font-extrabold tracking-tight text-ink">
+        <h1 className="text-title text-balance font-extrabold tracking-[-0.02em] text-chalk">
           New game
         </h1>
-        <p className="mt-3 text-pretty text-lg text-body">
-          Set it up now; open the lobby when everyone&apos;s in the room.
+        <p className="mt-3 text-pretty text-lg text-chalk-dim">
+          Set it up now; open the lobby when everyone&rsquo;s in the room.
         </p>
       </div>
 
