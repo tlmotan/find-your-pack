@@ -1,0 +1,16 @@
+{
+  "name": "kinetic-text-video",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts KineticReveal out/kinetic-reveal.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.533",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.533",
+    "typescript": "^7.0.2"
+  }
+}
