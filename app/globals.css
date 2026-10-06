@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* TODO: design tokens (colours, type) — see the frontend-design notes before styling. */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
