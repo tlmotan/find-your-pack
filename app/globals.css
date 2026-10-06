@@ -40,7 +40,16 @@
 
   --text-countdown: clamp(7rem, 46vw, 13rem);
   --text-countdown--line-height: 0.85;
-  --text-flag-name: clamp(2.75rem, 13vw, 5rem);
+  --text-display: clamp(3rem, 15vw, 4.25rem);
+  --text-display--line-height: 0.95;
+  /* The emoji is its own element on the reveal, not a character inside the
+     name: at this size it is the first thing read. */
+  /* The last-seconds warning on the reveal: big enough to catch the eye
+     without competing with the flag. */
+  --text-hide-warning: clamp(3rem, 14vw, 4.5rem);
+  --text-hide-warning--line-height: 1;
+  --text-emoji: clamp(4.5rem, 22vw, 7rem);
+  --text-flag-name: clamp(3.25rem, 17vw, 5.5rem);
   --text-flag-name--line-height: 0.95;
   --text-projected: clamp(5rem, 16vw, 11rem);
   --text-projected--line-height: 0.85;
@@ -158,6 +167,24 @@ textarea {
 
 .count-strike {
   animation: count-strike 200ms cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+/* Each second of the hide warning drops in from above the top edge. Keyed per
+   numeral so it replays, and it reads as something arriving rather than a
+   number quietly decrementing in a corner. */
+@keyframes drop-in {
+  from {
+    transform: translateY(-130%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.drop-in {
+  animation: drop-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* The halyard: a hairline the flag runs up, drawn rather than decorated. */
