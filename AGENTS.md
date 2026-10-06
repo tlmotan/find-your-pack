@@ -18,6 +18,7 @@ Built for a church youth service of 60–150 people on mobile data. **No persona
 | `ARCHITECTURE-ESSENTIALS.md` | **Always, first.** Stack, non-negotiable rules, data model, RPC functions. |
 | `ARCHITECTURE.md` | When you need detail on a section referenced in the essentials (e.g. `[§5.3]`). |
 | `PRD.md` | When deciding what is in or out of scope. Requirement IDs (H1, P3, A2…) live here. |
+| `DESIGN.md` | Before writing or restyling any UI. Colour, type, components, layout. Tokens are mirrored in `app/globals.css`. |
 
 If a request conflicts with these docs, **stop and ask** instead of guessing.
 

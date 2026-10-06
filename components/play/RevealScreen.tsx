@@ -1,18 +1,48 @@
 // Shows the player's group for reveal_seconds (PRD P3).
+//
+// The one loud screen in the app: full-bleed pack colour, white text, giant
+// emoji. Everything else stays white so this lands (DESIGN.md section 1).
 
-type Props = { name: string; emoji: string | null; soundHint: string | null; packSize: number; secondsLeft: number };
+import { packColorVar } from "@/lib/pack-color";
+
+type Props = {
+  name: string;
+  emoji: string | null;
+  soundHint: string | null;
+  packSize: number;
+  secondsLeft: number;
+};
 
 export function RevealScreen({ name, emoji, soundHint, packSize, secondsLeft }: Props) {
-  // TODO: design + reveal animation (respect prefers-reduced-motion)
   return (
-    <main className="min-h-dvh grid place-items-center p-6 text-center">
-      <div>
-        {emoji ? <p className="text-8xl">{emoji}</p> : null}
-        <h1 className="mt-4 text-4xl font-black">{name}</h1>
-        {soundHint ? <p className="mt-2 text-xl">{soundHint}</p> : null}
-        <p className="mt-6">{packSize} in your pack</p>
-        <p className="mt-2 text-sm opacity-70">Hiding in {Math.ceil(secondsLeft)}s</p>
+    <main
+      className="reveal-enter flex min-h-dvh flex-col px-6 py-10 text-center text-white"
+      style={{ background: packColorVar(name) }}
+    >
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="flex w-full max-w-[440px] flex-col items-center">
+          {emoji ? (
+            <p className="reveal-emoji text-reveal-emoji leading-none" aria-hidden="true">
+              {emoji}
+            </p>
+          ) : null}
+
+          {/* One live region for the whole reveal, so a screen reader
+              announces the group once rather than field by field. */}
+          <div aria-live="polite">
+            <h1 className="text-reveal-name mt-4 font-extrabold tracking-tight">{name}</h1>
+            {soundHint ? <p className="mt-3 text-2xl font-semibold">{soundHint}</p> : null}
+          </div>
+
+          <p className="mt-8 rounded-pill bg-white/15 px-5 py-2 text-lg font-semibold">
+            {packSize} in your pack
+          </p>
+        </div>
       </div>
+
+      <p className="mt-6 text-sm text-white/70">
+        Hiding in {Math.max(0, Math.ceil(secondsLeft))}s
+      </p>
     </main>
   );
 }
