@@ -16,7 +16,9 @@ type Props = {
 export function RevealScreen({ name, emoji, soundHint, packSize, secondsLeft }: Props) {
   return (
     <main
-      className="reveal-enter flex min-h-dvh flex-col px-6 py-10 text-center text-white"
+      // pb clears the iPhone home indicator: this is the app's only
+      // full-bleed screen, so nothing else reaches the bottom edge.
+      className="reveal-enter flex min-h-dvh flex-col px-6 pt-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-center text-white"
       style={{ background: packColorVar(name) }}
     >
       <div className="flex flex-1 flex-col items-center justify-center">
@@ -30,7 +32,7 @@ export function RevealScreen({ name, emoji, soundHint, packSize, secondsLeft }: 
           {/* One live region for the whole reveal, so a screen reader
               announces the group once rather than field by field. */}
           <div aria-live="polite">
-            <h1 className="text-reveal-name mt-4 font-extrabold tracking-tight">{name}</h1>
+            <h1 className="text-reveal-name mt-4 text-balance font-extrabold tracking-tight">{name}</h1>
             {soundHint ? <p className="mt-3 text-2xl font-semibold">{soundHint}</p> : null}
           </div>
 
@@ -40,7 +42,8 @@ export function RevealScreen({ name, emoji, soundHint, packSize, secondsLeft }: 
         </div>
       </div>
 
-      <p className="mt-6 text-sm text-white/70">
+      {/* tabular-nums: the digit changes every second and must not reflow. */}
+      <p className="mt-6 text-sm tabular-nums text-white/70">
         Hiding in {Math.max(0, Math.ceil(secondsLeft))}s
       </p>
     </main>

@@ -4,12 +4,13 @@
 // which does the real work — nothing here touches Supabase.
 
 import { useRouter } from "next/navigation";
-import { useId, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 
 import { JOIN_CODE_LENGTH, joinCodeError, normalizeJoinCode } from "@/lib/join-code";
 
 export function JoinForm() {
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const hintId = useId();
 
@@ -22,6 +23,9 @@ export function JoinForm() {
     const message = joinCodeError(code);
     if (message) {
       setError(message);
+      // Put the cursor back where the fix happens, rather than leaving it on
+      // the button they just pressed.
+      inputRef.current?.focus();
       return;
     }
     setSubmitting(true);
@@ -36,6 +40,8 @@ export function JoinForm() {
 
       <input
         id={inputId}
+        ref={inputRef}
+        name="join-code"
         value={code}
         onChange={(e) => {
           setCode(normalizeJoinCode(e.target.value));
@@ -64,7 +70,7 @@ export function JoinForm() {
         </p>
       ) : (
         <p id={hintId} className="mt-2 text-[15px] text-muted">
-          6 characters, from the host&apos;s screen.
+          6 characters, from the host’s screen.
         </p>
       )}
 

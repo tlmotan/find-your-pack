@@ -10,8 +10,8 @@ export default function HomePage() {
   return (
     <main className="flex min-h-dvh flex-col justify-center px-6 py-12">
       <div className="mx-auto w-full max-w-[440px]">
-        <h1 className="text-title font-extrabold tracking-tight text-ink">Find Your Pack</h1>
-        <p className="mt-3 text-lg text-body">
+        <h1 className="text-title text-balance font-extrabold tracking-tight text-ink">Find Your Pack</h1>
+        <p className="mt-3 text-pretty text-lg text-body">
           Get a secret group. Make the sound. Find your pack.
         </p>
 

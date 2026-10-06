@@ -3,9 +3,17 @@
 
 /** Offset in ms to add to Date.now() to get server time. */
 export function computeClockOffset(serverNowIso: string, localNowMs: number = Date.now()): number {
-  // TODO: implement + tests (consider halving round-trip latency later if needed)
-  void serverNowIso; void localNowMs;
-  throw new Error("not implemented: computeClockOffset");
+  const serverMs = Date.parse(serverNowIso);
+
+  // A malformed timestamp would poison every countdown with NaN, which reads as
+  // a frozen screen. Falling back to the phone's own clock is wrong by at most
+  // the skew we were trying to correct, and the server still enforces hiding.
+  if (Number.isNaN(serverMs)) return 0;
+
+  // Not corrected for round-trip latency: the response is at most a few hundred
+  // ms old, the countdown is 3 s, and every phone is biased the same direction,
+  // so they still reveal together — which is the property that matters.
+  return serverMs - localNowMs;
 }
 
 /** Current time on the server's clock. */

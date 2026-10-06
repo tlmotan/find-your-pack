@@ -78,6 +78,17 @@
   }
 }
 
+@keyframes countdown-tick {
+  from {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+.countdown-tick {
+  animation: countdown-tick 200ms ease-out both;
+}
+
 .reveal-enter {
   animation: pack-fade-in 250ms ease-out both;
 }
@@ -91,6 +102,9 @@
 html {
   color-scheme: light;
   background: var(--color-canvas);
+  /* Every screen is exactly one viewport tall; rubber-banding past it reads as
+     a glitch mid-game. */
+  overscroll-behavior: none;
 }
 
 body {
@@ -99,6 +113,18 @@ body {
   font-family: var(--font-sans);
   /* Stop iOS from inflating text in landscape on the host's screen. */
   -webkit-text-size-adjust: 100%;
+  /* The pill button has its own press state; the default grey flash fights it. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Drop the legacy 300ms tap delay on everything a player actually taps. */
+a,
+button,
+input,
+label,
+select,
+textarea {
+  touch-action: manipulation;
 }
 
 /* Browser surfaces we did not draw, themed from the palette rather than left

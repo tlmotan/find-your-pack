@@ -9,8 +9,10 @@ export function HiddenScreen({ packSize }: Props) {
   return (
     <main className="grid min-h-dvh place-items-center px-6 py-10 text-center">
       <div className="w-full max-w-[440px]">
-        <h1 className="text-title font-extrabold tracking-tight text-ink">Make your sound! 🔊</h1>
-        <p className="text-body mt-4 text-xl">{packSize} in your pack</p>
+        <h1 className="text-title text-balance font-extrabold tracking-tight text-ink">
+          Make your sound! <span aria-hidden="true">🔊</span>
+        </h1>
+        <p className="text-body mt-4 text-xl tabular-nums">{packSize} in your pack</p>
       </div>
     </main>
   );

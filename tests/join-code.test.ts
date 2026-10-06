@@ -50,6 +50,6 @@ describe("joinCodeError", () => {
     // Every message must name a recovery, not just say "invalid".
     const message = joinCodeError("A7KP2M".slice(0, 5) + "0");
     expect(message).not.toBeNull();
-    expect(message).toMatch(/check the host's screen/i);
+    expect(message).toMatch(/check the host’s screen/i);
   });
 });

@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 
+import { Countdown } from "@/components/play/Countdown";
 import { HiddenScreen } from "@/components/play/HiddenScreen";
 import { RevealScreen } from "@/components/play/RevealScreen";
 import { packColorIndex } from "@/lib/pack-color";
@@ -14,7 +15,7 @@ const GROUPS = THEMES.animals.groups;
 
 export function PreviewClient() {
   const [index, setIndex] = useState(0);
-  const [showHidden, setShowHidden] = useState(false);
+  const [view, setView] = useState<"countdown" | "reveal" | "hidden">("reveal");
   const [packSize, setPackSize] = useState(10);
   const [secondsLeft, setSecondsLeft] = useState(5);
   const [barOpen, setBarOpen] = useState(true);
@@ -25,7 +26,9 @@ export function PreviewClient() {
 
   return (
     <div className="relative">
-      {showHidden ? (
+      {view === "countdown" ? (
+        <Countdown secondsLeft={secondsLeft} />
+      ) : view === "hidden" ? (
         <HiddenScreen packSize={packSize} />
       ) : (
         <RevealScreen
@@ -57,10 +60,10 @@ export function PreviewClient() {
                   type="button"
                   onClick={() => {
                     setIndex(i);
-                    setShowHidden(false);
+                    setView("reveal");
                   }}
                   className={`rounded-sm px-2 py-1 text-xs ${
-                    i === index && !showHidden
+                    i === index && view === "reveal"
                       ? "bg-accent text-on-accent"
                       : "bg-surface text-body"
                   }`}
@@ -72,13 +75,20 @@ export function PreviewClient() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setShowHidden((v) => !v)}
-                className="rounded-sm bg-ink px-3 py-1.5 text-xs font-semibold text-white"
-              >
-                {showHidden ? "Show reveal" : "Show hidden"}
-              </button>
+              <div className="flex gap-1.5">
+                {(["countdown", "reveal", "hidden"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setView(v)}
+                    className={`rounded-sm px-3 py-1.5 text-xs font-semibold ${
+                      view === v ? "bg-ink text-white" : "bg-surface text-body"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
 
               <label className="flex items-center gap-2 text-xs text-muted">
                 pack
