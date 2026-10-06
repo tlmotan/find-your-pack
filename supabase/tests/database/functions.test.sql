@@ -4,7 +4,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(70);
+select plan(93);
 
 -- -----------------------------------------------------------------------------
 -- Lock-down: RLS is on with no policies and the grants are revoked, so the anon
@@ -465,6 +465,124 @@ select is(
 select is(
   (select count(*)::int from public.groups where session_id = (select (s->>'session_id')::uuid from game)),
   2, 'a second Start does not create more groups or reshuffle anyone'
+);
+
+-- =============================================================================
+-- C1: update_settings and end_session
+-- =============================================================================
+
+create temporary table settings_fixture as
+  select public.create_session('animals', '[{"name":"Cow"},{"name":"Dog"},{"name":"Cat"}]'::jsonb, 5, 7) as s;
+
+select is(
+  (select (public.update_settings((s->>'session_id')::uuid, s->>'host_secret', 12, null, null)->>'reveal_seconds')::int
+     from settings_fixture),
+  12, 'update_settings changes the reveal timer'
+);
+select is(
+  (select reveal_seconds from public.sessions
+    where id = (select (s->>'session_id')::uuid from settings_fixture)),
+  12, 'the new reveal timer is persisted'
+);
+
+-- Each argument is null for "leave alone".
+select is(
+  (select (public.update_settings((s->>'session_id')::uuid, s->>'host_secret', null, 2, null)->>'reveal_seconds')::int
+     from settings_fixture),
+  12, 'a null argument leaves that setting untouched'
+);
+select is(
+  (select (public.update_settings((s->>'session_id')::uuid, s->>'host_secret', null, null, null)->>'group_count_override')::int
+     from settings_fixture),
+  2, 'the group count override is persisted'
+);
+
+select throws_ok(
+  (select format($$ select public.update_settings(%L::uuid, %L, 1, null, null) $$, s->>'session_id', s->>'host_secret')
+     from settings_fixture),
+  'P0001', null, 'update_settings rejects a reveal timer below the range'
+);
+select throws_ok(
+  (select format($$ select public.update_settings(%L::uuid, %L, 31, null, null) $$, s->>'session_id', s->>'host_secret')
+     from settings_fixture),
+  'P0001', null, 'update_settings rejects a reveal timer above the range'
+);
+select throws_ok(
+  (select format($$ select public.update_settings(%L::uuid, %L, null, 4, null) $$, s->>'session_id', s->>'host_secret')
+     from settings_fixture),
+  'P0001', null, 'the group count cannot exceed the number of group names'
+);
+select throws_ok(
+  (select format($$ select public.update_settings(%L::uuid, %L, null, null, 8) $$, s->>'session_id', s->>'host_secret')
+     from settings_fixture),
+  'P0001', null, 'update_settings rejects more than 7 days'
+);
+select throws_ok(
+  (select format($$ select public.update_settings(%L::uuid, 'wrong', 10, null, null) $$, s->>'session_id')
+     from settings_fixture),
+  'P0003', null, 'update_settings rejects a wrong host secret'
+);
+
+-- Expiry is recomputed from created_at, so repeated saves cannot walk a
+-- session past the 7-day cap.
+select ok(
+  (select public.update_settings((s->>'session_id')::uuid, s->>'host_secret', null, null, 3) is not null
+     from settings_fixture),
+  'session length can be shortened'
+);
+select ok(
+  (select expires_at - created_at = interval '3 days' from public.sessions
+    where id = (select (s->>'session_id')::uuid from settings_fixture)),
+  'expiry is measured from created_at, not from now'
+);
+
+-- A host must not be able to delete their own game via a dropdown.
+update public.sessions set created_at = now() - interval '5 days', expires_at = now() + interval '2 days'
+ where id = (select (s->>'session_id')::uuid from settings_fixture);
+select throws_ok(
+  (select format($$ select public.update_settings(%L::uuid, %L, null, null, 1) $$, s->>'session_id', s->>'host_secret')
+     from settings_fixture),
+  'P0001', null, 'a session length that would expire the game immediately is refused'
+);
+
+-- Settings freeze at Start: phones are already counting down to windows
+-- derived from reveal_seconds.
+select is((select public.open_lobby((s->>'session_id')::uuid, s->>'host_secret')->>'status' from settings_fixture),
+          'lobby', 'settings fixture opens its lobby');
+select is((select public.join_session(s->>'join_code', 'sp1')->>'status' from settings_fixture), 'joined', 'first settings player joins');
+select is((select public.join_session(s->>'join_code', 'sp2')->>'status' from settings_fixture), 'joined', 'second settings player joins');
+select is((select public.start_session((s->>'session_id')::uuid, s->>'host_secret')->>'status' from settings_fixture),
+          'started', 'settings fixture starts');
+select throws_ok(
+  (select format($$ select public.update_settings(%L::uuid, %L, 7, null, null) $$, s->>'session_id', s->>'host_secret')
+     from settings_fixture),
+  'P0001', null, 'settings cannot be changed once the game has started'
+);
+
+-- end_session deletes everything, which is the whole privacy story.
+select throws_ok(
+  (select format($$ select public.end_session(%L::uuid, 'wrong') $$, s->>'session_id') from settings_fixture),
+  'P0003', null, 'end_session rejects a wrong host secret'
+);
+select is(
+  (select (public.end_session((s->>'session_id')::uuid, s->>'host_secret')->>'ok')::boolean from settings_fixture),
+  true, 'end_session reports success'
+);
+select is(
+  (select count(*)::int from public.sessions where id = (select (s->>'session_id')::uuid from settings_fixture)),
+  0, 'end_session deletes the session row'
+);
+select is(
+  (select count(*)::int from public.participants where session_id = (select (s->>'session_id')::uuid from settings_fixture)),
+  0, 'participants go with it, through the cascade'
+);
+select is(
+  (select count(*)::int from public.groups where session_id = (select (s->>'session_id')::uuid from settings_fixture)),
+  0, 'groups go with it too, so nothing is retained after a game'
+);
+select is(
+  (select public.get_my_state((s->>'session_id')::uuid, 'sp1')->>'status' from settings_fixture),
+  'ended', 'a phone still polling a deleted session is told it ended'
 );
 
 select * from finish();
