@@ -1,13 +1,15 @@
 "use client";
 
-import { BlockWipe } from "@/components/BlockWipe";
 import { Countdown } from "@/components/play/Countdown";
 import { HiddenScreen } from "@/components/play/HiddenScreen";
 import { RevealScreen } from "@/components/play/RevealScreen";
 import { StatusScreen } from "@/components/play/StatusScreen";
 import { WaitingScreen } from "@/components/play/WaitingScreen";
+import { useBlockWipe } from "@/hooks/useBlockWipe";
 import { useMyState } from "@/hooks/useMyState";
 import { usePlayerScreen } from "@/hooks/usePlayerScreen";
+import type { ConnectionView } from "@/lib/connection";
+import type { PlayerScreenState } from "@/lib/player-screen";
 import type { MyState } from "@/lib/types";
 
 /** Pack size survives the switch from reveal to hidden, so the count does not
@@ -19,7 +21,26 @@ function packSizeOf(state: MyState | null): number {
 
 export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCode: string }) {
   const { state, clockOffsetMs, connection } = useMyState(sessionId, joinCode);
-  const { screen, secondsLeft } = usePlayerScreen(state, clockOffsetMs);
+  const view = usePlayerScreen(state, clockOffsetMs);
+  const wipe = useBlockWipe(view);
+
+  return (
+    <>
+      <PlayerScreenBody state={state} view={view} connection={connection} />
+      <BlockWipe phase={wipe} />
+    </>
+  );
+}
+
+function PlayerScreenBody({
+  state,
+  view: { screen, secondsLeft },
+  connection,
+}: {
+  state: MyState | null;
+  view: PlayerScreenState;
+  connection: ConnectionView;
+}) {
 
   // Only when nothing has ever loaded. With state in hand a failed poll changes
   // nothing the player can see, so the screen stays and the footer says so.

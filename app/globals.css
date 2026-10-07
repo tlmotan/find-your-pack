@@ -241,6 +241,44 @@ textarea {
   background-repeat: repeat-y;
 }
 
+/* Block wipe: reveal → hidden. The one exception to the 300ms cap (DESIGN.md
+   §7). Timings mirror WIPE_* in lib/player-screen.ts. Resting state is above
+   the screen, so with reduced motion (animations off below) it never shows. */
+@keyframes wipe-cover {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes wipe-clear {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.wipe-col {
+  transform: translateY(-100%);
+  will-change: transform;
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.76, 0, 0.24, 1);
+  animation-delay: calc(var(--i) * 60ms);
+  animation-fill-mode: both;
+}
+
+.wipe-cover {
+  animation-name: wipe-cover;
+}
+
+.wipe-clear {
+  animation-name: wipe-clear;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
