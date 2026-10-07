@@ -14,15 +14,28 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 
 import { BlockWipe } from "@/components/play/BlockWipe";
 import { Countdown } from "@/components/play/Countdown";
+import { FeedbackSheet } from "@/components/play/FeedbackSheet";
 import { HiddenScreen } from "@/components/play/HiddenScreen";
 import { RevealScreen } from "@/components/play/RevealScreen";
+import { StatusScreen } from "@/components/play/StatusScreen";
 import { WaitingScreen } from "@/components/play/WaitingScreen";
 import { useBlockWipe } from "@/hooks/useBlockWipe";
+import { useEndedWipe } from "@/hooks/useEndedWipe";
 import { usePlayerScreen } from "@/hooks/usePlayerScreen";
 import { COUNTDOWN_SECONDS } from "@/lib/constants";
 import { packFlag } from "@/lib/pack-flag";
 import { THEMES } from "@/lib/themes";
-import type { MyState } from "@/lib/types";
+import type { MyState, PlayerScreen } from "@/lib/types";
+
+type View = "waiting" | "countdown" | "reveal" | "hidden" | "ended" | "feedback";
+
+/** The chip the host is inspecting, as the screen the player would be on. */
+function asPlayerScreen(view: View): PlayerScreen {
+  if (view === "reveal") return "revealed";
+  // The sheet sits over the ended screen, so both are "ended" to the hook.
+  if (view === "feedback") return "ended";
+  return view;
+}
 
 const GROUPS = THEMES.animals.groups;
 const BUBBLE = 52;
@@ -31,7 +44,7 @@ const DRAG_SLOP = 5;
 
 export function PreviewClient() {
   const [index, setIndex] = useState(0);
-  const [view, setView] = useState<"waiting" | "countdown" | "reveal" | "hidden">("reveal");
+  const [view, setView] = useState<View>("reveal");
   const [packSize, setPackSize] = useState(10);
   const [revealSeconds, setRevealSeconds] = useState(8);
   const [open, setOpen] = useState(false);
@@ -41,6 +54,12 @@ export function PreviewClient() {
   const liveView = usePlayerScreen(live, 0);
   const { screen, secondsLeft } = liveView;
   const wipe = useBlockWipe(liveView);
+
+  // The shipping hook, fed the chip selection: hidden → ended wipes here for
+  // exactly the reason it wipes on a real phone, not a preview imitation.
+  const ended = useEndedWipe(asPlayerScreen(view));
+  // While it holds, it is holding the hidden screen under the columns.
+  const shown: View = ended.screen === "hidden" && view !== "hidden" ? "hidden" : view;
 
   // Placed on mount, because the viewport size is not known on the server.
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -126,9 +145,21 @@ export function PreviewClient() {
         />
       );
     }
-    if (view === "waiting") return <WaitingScreen />;
-    if (view === "countdown") return <Countdown secondsLeft={revealSeconds} />;
-    if (view === "hidden") return <HiddenScreen packSize={packSize} />;
+    if (shown === "waiting") return <WaitingScreen />;
+    if (shown === "countdown") return <Countdown secondsLeft={revealSeconds} />;
+    if (shown === "hidden") return <HiddenScreen packSize={packSize} />;
+    // What a player's phone actually shows once the host ends the game.
+    if (shown === "ended") return <StatusScreen title="This game has ended" />;
+    // The proposed feedback sheet over that same ended screen. Preview only —
+    // see the header of FeedbackSheet.tsx.
+    if (shown === "feedback") {
+      return (
+        <>
+          <StatusScreen title="This game has ended" />
+          <FeedbackSheet onDismiss={() => setView("ended")} />
+        </>
+      );
+    }
     return (
       <RevealScreen
         key={`${group.name}-${revealSeconds}`}
@@ -150,7 +181,7 @@ export function PreviewClient() {
   return (
     <div className="relative">
       {stage()}
-      <BlockWipe phase={wipe} />
+      <BlockWipe phase={wipe ?? ended.phase} />
 
       {pos ? (
         <div className="fixed z-50" style={{ left: pos.x, top: pos.y }}>
@@ -214,7 +245,9 @@ export function PreviewClient() {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-1">
-                {(["waiting", "countdown", "reveal", "hidden"] as const).map((v) => (
+                {(
+                  ["waiting", "countdown", "reveal", "hidden", "ended", "feedback"] as const
+                ).map((v) => (
                   <button
                     key={v}
                     type="button"

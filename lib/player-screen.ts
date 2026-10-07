@@ -123,3 +123,16 @@ export const WIPE_LEAD_MS = WIPE_COVER_MS + 200;
 export function isWipeCovering({ screen, secondsLeft }: PlayerScreenState): boolean {
   return screen === "revealed" && secondsLeft !== null && secondsLeft * 1000 <= WIPE_LEAD_MS;
 }
+
+/**
+ * True for the one screen change that also wipes: hidden → ended.
+ *
+ * Narrow on purpose. The hook that reads this holds the old screen on for
+ * WIPE_COVER_MS so the swap happens under the columns, and a hold is only ever
+ * safe where neither side shows a group — otherwise it would keep a reveal on
+ * screen past its window, which hard rule 5 forbids. Anything involving
+ * "revealed" must stay instant.
+ */
+export function isEndedWipe(from: PlayerScreen, to: PlayerScreen): boolean {
+  return from === "hidden" && to === "ended";
+}

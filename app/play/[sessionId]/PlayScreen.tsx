@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 import { BlockWipe } from "@/components/play/BlockWipe";
 import { Countdown } from "@/components/play/Countdown";
 import { HiddenScreen } from "@/components/play/HiddenScreen";
@@ -7,6 +9,7 @@ import { RevealScreen } from "@/components/play/RevealScreen";
 import { StatusScreen } from "@/components/play/StatusScreen";
 import { WaitingScreen } from "@/components/play/WaitingScreen";
 import { useBlockWipe } from "@/hooks/useBlockWipe";
+import { useEndedWipe } from "@/hooks/useEndedWipe";
 import { useMyState } from "@/hooks/useMyState";
 import { usePlayerScreen } from "@/hooks/usePlayerScreen";
 import type { ConnectionView } from "@/lib/connection";
@@ -20,15 +23,38 @@ function packSizeOf(state: MyState | null): number {
   return 0;
 }
 
+/**
+ * The last size we were told, kept for the hidden → ended wipe.
+ *
+ * The state has already flipped to "ended" (which carries no pack size) while
+ * the hidden screen is still being held under the columns, so without this the
+ * footer would blink to "0 in your pack" just as the wipe starts closing.
+ */
+function useLastPackSize(state: MyState | null): number {
+  const size = packSizeOf(state);
+  const last = useRef(size);
+  if (size > 0) last.current = size;
+  return size > 0 ? size : last.current;
+}
+
 export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCode: string }) {
   const { state, clockOffsetMs, connection } = useMyState(sessionId, joinCode);
   const view = usePlayerScreen(state, clockOffsetMs);
   const wipe = useBlockWipe(view);
+  const ended = useEndedWipe(view.screen);
+  const packSize = useLastPackSize(state);
 
+  // Only one wipe can be running: the reveal countdown drives the first, the
+  // host ending the game drives the second, and they cannot overlap.
   return (
     <>
-      <PlayerScreenBody state={state} view={view} connection={connection} />
-      <BlockWipe phase={wipe} />
+      <PlayerScreenBody
+        state={state}
+        view={{ ...view, screen: ended.screen }}
+        packSize={packSize}
+        connection={connection}
+      />
+      <BlockWipe phase={wipe ?? ended.phase} />
     </>
   );
 }
@@ -36,10 +62,12 @@ export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCod
 function PlayerScreenBody({
   state,
   view: { screen, secondsLeft },
+  packSize,
   connection,
 }: {
   state: MyState | null;
   view: PlayerScreenState;
+  packSize: number;
   connection: ConnectionView;
 }) {
 
@@ -74,7 +102,7 @@ function PlayerScreenBody({
       );
 
     case "hidden":
-      return <HiddenScreen packSize={packSizeOf(state)} reconnecting={reconnecting} />;
+      return <HiddenScreen packSize={packSize} reconnecting={reconnecting} />;
 
     case "not_open":
       return <StatusScreen title="This game hasn’t opened yet" />;

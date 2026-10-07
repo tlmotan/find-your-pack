@@ -184,3 +184,38 @@ are landscape (16:10) — they are read on a laptop and projected.
 > column: the enormous signal yellow numeral "24" with "PHONES JOINED" beneath,
 > and at the bottom the small uppercase "END GAME" link. Flat dark UI, no
 > gradients, no shadows.
+
+---
+
+## 10. Feedback sheet, after the game ends — `/play/[sessionId]` *(proposed, not in v1)*
+
+Player-facing, in the Grab "rate your ride" position: it rises over the ended
+screen the moment the host ends the game. No stars (an icon set is out), no free
+text (it is where someone types a name, and no personal data is a hard rule) —
+emoji faces and tappable reason chips instead.
+
+> A mobile web app feedback sheet, portrait phone viewport, deep navy `#0A1626`.
+> Behind the sheet, dimmed and partly visible at the top of the frame, the
+> ended-game screen: a short vertical dashed hairline in muted slate `#2C4259`
+> and the faded headline "That's a wrap". Covering the lower two-thirds, a panel
+> in slightly lighter navy `#132235` with a 1px hairline top border `#2C4259`
+> and 8px rounded top corners, flush to the left, right and bottom edges of the
+> frame — flat, no shadow, no blur, no glass. Inside the panel, generous
+> padding. At the top, a small 13px uppercase wide-tracked label in muted
+> blue-grey `#9FB0C4`: "BEFORE YOU GO". Below it the headline "How was that?" in
+> extra-bold system sans, near-white `#F4F6F8`, large, tight negative tracking.
+> Beneath, a row of five equally sized tappable square chips with 8px radius,
+> spanning the panel width with small gaps, each holding one large emoji face:
+> confounded, slightly frowning, neutral, slightly smiling, star-struck. Four
+> chips have a 2px muted slate `#2C4259` border and transparent fill; the
+> fourth, the slightly smiling one, is selected — 2px signal yellow `#FFD100`
+> border and a faint yellow-tinted fill. Under the row, a small 13px uppercase
+> wide-tracked label in muted blue-grey: "WHAT WORKED?". Below it, two rows of
+> pill-shaped chips with 2px muted slate borders and near-white labels, wrapping
+> naturally: "Easy to join", "Found my pack", "Loved the flag", "Too fast",
+> "Confusing". The "Easy to join" pill is selected, filled signal yellow
+> `#FFD100` with a near-black `#0A0A0A` bold label. At the bottom of the panel, a
+> full-width pill button in signal yellow `#FFD100`, 56px tall, with the
+> near-black extra-bold label "Send feedback". Directly beneath it, centred, a
+> small 13px uppercase wide-tracked muted blue-grey text link "NO THANKS". Flat
+> dark UI, no gradients, no shadows, no glass, high contrast, generous spacing.

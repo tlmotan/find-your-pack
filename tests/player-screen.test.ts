@@ -5,6 +5,7 @@ import {
   WIPE_COVER_MS,
   WIPE_LEAD_MS,
   derivePlayerScreen,
+  isEndedWipe,
   isRevealVisible,
   isWipeCovering,
 } from "@/lib/player-screen";
@@ -186,5 +187,28 @@ describe("isWipeCovering", () => {
   it("is false outside a reveal", () => {
     expect(isWipeCovering({ screen: "countdown", secondsLeft: 0.1 })).toBe(false);
     expect(isWipeCovering({ screen: "hidden", secondsLeft: null })).toBe(false);
+  });
+});
+
+describe("isEndedWipe", () => {
+  it("fires on hidden → ended", () => {
+    expect(isEndedWipe("hidden", "ended")).toBe(true);
+  });
+
+  it("never fires on a transition involving a reveal", () => {
+    // The hook holds the old screen on while the columns close. Holding
+    // "revealed" would keep a group on screen past its window, which hard
+    // rule 5 forbids — so no reveal transition may ever animate this way.
+    const screens = ["joining", "not_open", "waiting", "countdown", "revealed", "hidden", "ended"] as const;
+    for (const to of screens) expect(isEndedWipe("revealed", to)).toBe(false);
+    for (const from of screens) expect(isEndedWipe(from, "revealed")).toBe(false);
+  });
+
+  it("does not fire on any other pair", () => {
+    expect(isEndedWipe("hidden", "waiting")).toBe(false);
+    expect(isEndedWipe("waiting", "ended")).toBe(false);
+    expect(isEndedWipe("countdown", "ended")).toBe(false);
+    expect(isEndedWipe("ended", "ended")).toBe(false);
+    expect(isEndedWipe("joining", "ended")).toBe(false);
   });
 });

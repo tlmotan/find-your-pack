@@ -93,7 +93,9 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
           <StatusPill status={state.status} />
         </div>
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
+        {/* Stretch, not start: the hairline on the right column is only a full
+            divider if that column runs the height of the packs beside it. */}
+        <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:items-stretch">
           {/* The QR goes away once the game has started: late joiners are still
               welcome, but the room's attention should be on the packs. */}
           {!started ? (
@@ -107,16 +109,25 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
             </section>
           )}
 
-          <section>
-            {/* Projector-sized: this number is read from the back of the room. */}
-            <p className="text-projected font-extrabold tabular-nums tracking-[-0.05em] text-signal-yellow">
-              {state.active_count}
-            </p>
-            <p className="mt-1 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
-              {state.active_count === 1 ? "phone joined" : "phones joined"}
-            </p>
+          {/* The hairline only appears once the columns sit side by side; stacked,
+              the space between them already does the dividing. */}
+          <section className="lg:flex lg:flex-col lg:border-l lg:border-rule lg:pl-10">
+            {/* Projector-sized: this number is read from the back of the room.
+                One atomic status, so a screen reader hears "24 phones joined"
+                rather than a bare number changing under it. */}
+            <div role="status" aria-atomic="true">
+              <p className="text-projected font-extrabold tabular-nums tracking-[-0.05em] text-signal-yellow">
+                {state.active_count}
+              </p>
+              <p className="mt-1 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
+                {state.active_count === 1 ? "phone joined" : "phones joined"}
+              </p>
+            </div>
 
-            <div className="mt-8 max-w-[440px]">
+            {/* Once playing, the only control left is End game, and it belongs
+                as far from the count as the column allows. Before Start, the
+                primary button stays up with the count where it's expected. */}
+            <div className={`mt-8 max-w-[440px] ${started ? "lg:mt-auto lg:mx-auto" : ""}`}>
               <HostControls
                 state={state}
                 busy={busy}
@@ -170,7 +181,7 @@ function StatusPill({ status }: { status: string }) {
     status === "lobby"
       ? "bg-accent text-on-accent"
       : status === "started"
-        ? "border border-rule text-success"
+        ? "border border-success text-success"
         : "border border-rule text-chalk-dim";
 
   return (
