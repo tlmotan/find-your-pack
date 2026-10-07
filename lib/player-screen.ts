@@ -94,3 +94,32 @@ export function isRevealVisible(
   if (Number.isNaN(revealAt)) return true;
   return serverNow(offsetMs, nowMs) >= revealAt;
 }
+
+// ---------------------------------------------------------------------------
+// Block wipe: the reveal → hidden transition (DESIGN.md §7, the one exception
+// to the 300ms motion cap). Timings are mirrored in app/globals.css.
+// ---------------------------------------------------------------------------
+
+export const WIPE_COLUMNS = 5;
+/** How long one column takes to cover, and again to clear. */
+export const WIPE_COLUMN_MS = 200;
+/** Each column starts this much after the one to its left. */
+export const WIPE_STAGGER_MS = 60;
+/** From the first column moving to the last one fully covering the screen. */
+export const WIPE_COVER_MS = WIPE_COLUMN_MS + (WIPE_COLUMNS - 1) * WIPE_STAGGER_MS;
+
+/**
+ * How long before the hide the cover starts.
+ *
+ * Why early: hard rule 5 lets the client hide the group earlier than the
+ * server, never later. Starting the cover ahead of hideAt means the flag is
+ * already under the columns when it is struck, instead of the animation
+ * holding it on screen past its window. The extra 200ms is one tick of
+ * usePlayerScreen (TICK_MS), since the tick that starts the wipe can land late.
+ */
+export const WIPE_LEAD_MS = WIPE_COVER_MS + 200;
+
+/** True during the last WIPE_LEAD_MS of a reveal: the columns should be coming down. */
+export function isWipeCovering({ screen, secondsLeft }: PlayerScreenState): boolean {
+  return screen === "revealed" && secondsLeft !== null && secondsLeft * 1000 <= WIPE_LEAD_MS;
+}

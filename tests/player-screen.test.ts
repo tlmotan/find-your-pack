@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { REVEAL_GRACE_SECONDS } from "@/lib/constants";
-import { derivePlayerScreen, isRevealVisible } from "@/lib/player-screen";
+import {
+  WIPE_COVER_MS,
+  WIPE_LEAD_MS,
+  derivePlayerScreen,
+  isRevealVisible,
+  isWipeCovering,
+} from "@/lib/player-screen";
 import { computeClockOffset } from "@/lib/server-clock";
 import type { MyState } from "@/lib/types";
 
@@ -148,5 +154,37 @@ describe("isRevealVisible", () => {
     expect(isRevealVisible(null, 0, T0)).toBe(false);
     expect(isRevealVisible({ status: "waiting", server_now: iso(T0) }, 0, T0)).toBe(false);
     expect(isRevealVisible({ status: "hidden", pack_size: 3 }, 0, T0)).toBe(false);
+  });
+});
+
+describe("isWipeCovering", () => {
+  it("covers the 5 staggered columns in 440ms: 200ms each, last one 240ms late", () => {
+    expect(WIPE_COVER_MS).toBe(440);
+  });
+
+  it("starts early enough that the flag is covered before the hide, even on a late tick", () => {
+    // Hard rule 5: the wipe may hide early, never late.
+    expect(WIPE_LEAD_MS).toBeGreaterThanOrEqual(WIPE_COVER_MS + 200);
+  });
+
+  it("is false for most of the reveal and true in its last WIPE_LEAD_MS", () => {
+    const state = revealState(0, 5);
+    const at = (ms: number) => isWipeCovering(derivePlayerScreen(state, { offsetMs: 0, nowMs: T0 + ms }));
+
+    expect(at(0)).toBe(false);
+    expect(at(5_000 - WIPE_LEAD_MS - 1)).toBe(false);
+    expect(at(5_000 - WIPE_LEAD_MS)).toBe(true);
+    expect(at(4_999)).toBe(true);
+  });
+
+  it("does not delay the hide: the group is gone at hideAt as before", () => {
+    const got = derivePlayerScreen(revealState(0, 5), { offsetMs: 0, nowMs: T0 + 5_000 });
+    expect(got.screen).toBe("hidden");
+    expect(isWipeCovering(got)).toBe(false);
+  });
+
+  it("is false outside a reveal", () => {
+    expect(isWipeCovering({ screen: "countdown", secondsLeft: 0.1 })).toBe(false);
+    expect(isWipeCovering({ screen: "hidden", secondsLeft: null })).toBe(false);
   });
 });
