@@ -1,141 +1,75 @@
 "use client";
 
-// PROPOSED — NOT IN v1, AND NOT WIRED TO ANYTHING.
+// PROPOSED, AND STILL OWED A PRD LINE.
 //
-// A design study for the post-game feedback sheet (see mockup-prompts.md §10).
-// It is rendered only by /preview so the design can be judged for real. It is
-// imported by no route, it makes no network call, and it stores nothing —
-// every answer lives in local state and dies with the component.
+// The post-game feedback sheet (mockup-prompts.md §10): it rises over the ended
+// screen on its own, a couple of hundred milliseconds after the game finishes.
+// No button opens it, because it is part of the transition out of the game
+// rather than something the player goes looking for.
 //
-// Before any of this ships it needs a PRD line, because it sits against two
-// standing rules: AGENTS.md hard rule 1 (no tracking or analytics) and rule 10
-// (v1 scope). That is a product decision, not a styling one.
+// It sits against AGENTS.md hard rule 10 (v1 scope), so it needs a PRD line
+// before this counts as shipped. It does NOT sit against hard rule 1: the form
+// asks for no personal data, and nothing here sends or stores an answer —
+// onSubmit hands the taps to the caller and that is the end of them.
 //
-// Deliberately no free-text field: an open box is where someone types their
-// own or a friend's name, which is the exact thing hard rule 1 forbids us to
-// hold. Fixed chips carry the same signal and are faster to tap in a loud hall.
+// Not a modal: no backdrop, no focus trap, no blur, and the ended screen stays
+// readable behind it. The brief is a sheet arriving after a finished
+// experience, not a dialog interrupting one.
 
-import { useState } from "react";
+import { FeedbackForm, type FeedbackResponse } from "@/components/ui/feedback-form";
+import { useSheetEntrance } from "@/hooks/useSheetEntrance";
+import { isSheetInteractive } from "@/lib/feedback-sheet";
 
-/** Emoji alone is not a label — each rating carries a word for screen readers. */
-const RATINGS = [
-  { value: 1, emoji: "😖", label: "Bad" },
-  { value: 2, emoji: "🙁", label: "Poor" },
-  { value: 3, emoji: "😐", label: "Okay" },
-  { value: 4, emoji: "🙂", label: "Good" },
-  { value: 5, emoji: "🤩", label: "Great" },
-] as const;
+type Props = {
+  /**
+   * Whether the ended screen is actually on show yet.
+   *
+   * False while the block wipe's columns are still clearing over it — starting
+   * the rise under the columns would spend the whole travel out of sight.
+   */
+  ready?: boolean;
+  onSubmit?: (data: FeedbackResponse) => void;
+  /** The screen the sheet rises over, dimmed while it is up. */
+  children: React.ReactNode;
+};
 
-const TAGS = ["Easy to join", "Found my pack", "Loved the flag", "Too fast", "Confusing"];
-
-type Props = { onDismiss?: () => void };
-
-export function FeedbackSheet({ onDismiss }: Props) {
-  const [rating, setRating] = useState<number | null>(null);
-  const [tags, setTags] = useState<string[]>([]);
-  const [sent, setSent] = useState(false);
-
-  function toggleTag(tag: string) {
-    setTags((current) =>
-      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],
-    );
-  }
+export function FeedbackSheet({ ready = true, onSubmit, children }: Props) {
+  const { phase, present, dismiss } = useSheetEntrance(ready);
 
   return (
-    // Flush to three edges rather than floating: the system has no elevation,
-    // so a card with a shadow would be the only thing in the app that lifts.
-    <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-md border-t border-rule bg-ground-raised px-5 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <div className="mx-auto w-full max-w-[26rem]">
-        {sent ? (
-          <div role="status" className="py-6 text-center">
-            <p className="text-title font-extrabold tracking-[-0.02em] text-chalk">Thank you!</p>
-            <p className="mt-2 text-[15px] text-chalk-dim">That helps us run a better one next time.</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
-              Before you go
-            </p>
-            <h2 className="mt-2 text-title font-extrabold tracking-[-0.02em] text-chalk">
-              How was that?
-            </h2>
-
-            {/* A radiogroup, not five toggles: exactly one rating can hold. */}
-            <fieldset className="mt-5 border-0 p-0">
-              <legend className="sr-only">Rate your experience</legend>
-              <div className="flex gap-2">
-                {RATINGS.map((r) => {
-                  const selected = rating === r.value;
-                  return (
-                    <label
-                      key={r.value}
-                      className={`flex flex-1 cursor-pointer items-center justify-center rounded-md border-2 py-3 text-3xl transition-[border-color,background-color] duration-150 ${
-                        selected ? "border-accent bg-accent/10" : "border-rule"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="rating"
-                        value={r.value}
-                        checked={selected}
-                        onChange={() => setRating(r.value)}
-                        className="sr-only"
-                      />
-                      <span aria-hidden="true">{r.emoji}</span>
-                      <span className="sr-only">{r.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
-
-            <p className="mt-6 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
-              What worked?
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {TAGS.map((tag) => {
-                const selected = tags.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => toggleTag(tag)}
-                    className={`rounded-pill min-h-11 border-2 px-4 text-base font-semibold transition-colors duration-150 ${
-                      selected
-                        ? "border-accent bg-accent text-on-accent"
-                        : "border-rule text-chalk"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              disabled={rating === null}
-              onClick={() => setSent(true)}
-              className="rounded-pill mt-7 h-14 w-full bg-accent text-lg font-extrabold tracking-[-0.01em] text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:bg-ground disabled:text-chalk-dim disabled:active:scale-100"
-            >
-              Send feedback
-            </button>
-
-            {/* Declining stays the low-effort path: this catches someone with a
-                thumb already on the way to closing the tab. */}
-            <div className="mt-2 text-center">
-              <button
-                type="button"
-                onClick={onDismiss}
-                className="rounded-sm px-4 py-3 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase transition-colors hover:text-chalk"
-              >
-                No thanks
-              </button>
-            </div>
-          </>
-        )}
+    <div className="relative">
+      {/* Dimmed in step with the rise. Opacity rather than an overlay, so the
+          ended screen fades toward the same ground it already sits on instead
+          of gaining a grey film. */}
+      <div className="sheet-dim" data-phase={present ? phase : "below"}>
+        {children}
       </div>
+
+      {present ? (
+        <section
+          aria-labelledby="feedback-heading"
+          // Inert until it stops moving: a chip that slides out from under a
+          // thumb mid-press is how someone sends the wrong answer.
+          inert={!isSheetInteractive(phase)}
+          data-phase={phase}
+          // Capped and scrollable: with the comment box open on a 360x640
+          // phone the content is taller than the sheet's share of the screen,
+          // and the overflow would otherwise run off the top edge.
+          className="sheet-rise rounded-t-md border-t border-rule bg-ground-raised fixed inset-x-0 bottom-0 z-40 flex max-h-[92dvh] min-h-[66dvh] flex-col overflow-y-auto px-5 pt-7 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+        >
+          <div id="feedback-heading" className="sr-only">
+            Before you go: how was that?
+          </div>
+          <FeedbackForm
+            className="mx-auto w-full max-w-[26rem]"
+            onSubmit={(data) => {
+              onSubmit?.(data);
+              dismiss();
+            }}
+            onCancel={dismiss}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

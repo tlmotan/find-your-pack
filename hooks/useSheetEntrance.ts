@@ -12,7 +12,7 @@
 // The phase decision itself lives in lib/feedback-sheet.ts so it can be tested
 // without a DOM; this file is only the timers.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   SHEET_DELAY_MS,
@@ -33,6 +33,13 @@ export function useSheetEntrance(ready: boolean): Result {
   const [phase, setPhase] = useState<SheetPhase>("below");
   const [present, setPresent] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const exit = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // The unmount timer outlives the effect that schedules the entrance, so it is
+  // cleared here rather than there.
+  useEffect(() => () => {
+    if (exit.current !== null) clearTimeout(exit.current);
+  }, []);
 
   useEffect(() => {
     if (!ready || leaving) return;
@@ -65,7 +72,7 @@ export function useSheetEntrance(ready: boolean): Result {
     // "below" is both the starting and the leaving position, so the same
     // transition carries it back down; then it goes for good.
     setPhase("below");
-    setTimeout(() => setPresent(false), SHEET_RISE_MS);
+    exit.current = setTimeout(() => setPresent(false), SHEET_RISE_MS);
   }, []);
 
   return { phase, present, dismiss };

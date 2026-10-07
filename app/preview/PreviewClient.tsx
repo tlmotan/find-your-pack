@@ -48,6 +48,9 @@ export function PreviewClient() {
   const [packSize, setPackSize] = useState(10);
   const [revealSeconds, setRevealSeconds] = useState(8);
   const [open, setOpen] = useState(false);
+  // Bumped whenever the chip is pressed, so tapping it again replays the
+  // entrance instead of showing a sheet that has already been sent away.
+  const [feedbackRun, setFeedbackRun] = useState(0);
 
   // null = not running. When set, the real hook drives the screens.
   const [live, setLive] = useState<MyState | null>(null);
@@ -149,15 +152,15 @@ export function PreviewClient() {
     if (shown === "countdown") return <Countdown secondsLeft={revealSeconds} />;
     if (shown === "hidden") return <HiddenScreen packSize={packSize} />;
     // What a player's phone actually shows once the host ends the game.
-    if (shown === "ended") return <StatusScreen title="This game has ended" />;
-    // The proposed feedback sheet over that same ended screen. Preview only —
-    // see the header of FeedbackSheet.tsx.
+    if (shown === "ended") return <StatusScreen title="That’s a wrap" />;
+    // The feedback sheet over that same ended screen, mounted exactly as
+    // PlayScreen mounts it so the entrance you watch here is the real one.
+    // `ready` is true because nothing is covering the screen in Inspect mode.
     if (shown === "feedback") {
       return (
-        <>
-          <StatusScreen title="This game has ended" />
-          <FeedbackSheet onDismiss={() => setView("ended")} />
-        </>
+        <FeedbackSheet key={feedbackRun} ready>
+          <StatusScreen title="That’s a wrap" />
+        </FeedbackSheet>
       );
     }
     return (
@@ -252,7 +255,10 @@ export function PreviewClient() {
                     key={v}
                     type="button"
                     disabled={live !== null}
-                    onClick={() => setView(v)}
+                    onClick={() => {
+                      if (v === "feedback") setFeedbackRun((n) => n + 1);
+                      setView(v);
+                    }}
                     className={`${chip} ${
                       view === v ? "bg-chalk text-ground" : "bg-ground-raised text-chalk-dim"
                     }`}

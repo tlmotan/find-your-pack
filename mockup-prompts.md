@@ -190,9 +190,10 @@ are landscape (16:10) — they are read on a laptop and projected.
 ## 10. Feedback sheet, after the game ends — `/play/[sessionId]` *(proposed, not in v1)*
 
 Player-facing, in the Grab "rate your ride" position: it rises over the ended
-screen the moment the host ends the game. No stars (an icon set is out), no free
-text (it is where someone types a name, and no personal data is a hard rule) —
-emoji faces and tappable reason chips instead.
+screen the moment the host ends the game. No stars — an icon set is out, so
+emoji faces and tappable reason chips carry the rating. An optional comment box
+sits last, under the taps; it is capped and asks for no names, because hard rule
+1 forbids this app to hold one.
 
 > A mobile web app feedback sheet, portrait phone viewport, deep navy `#0A1626`.
 > Behind the sheet, dimmed and partly visible at the top of the frame, the
@@ -216,6 +217,11 @@ emoji faces and tappable reason chips instead.
 > "Confusing". The "Easy to join" pill is selected, filled signal yellow
 > `#FFD100` with a near-black `#0A0A0A` bold label. At the bottom of the panel, a
 > full-width pill button in signal yellow `#FFD100`, 56px tall, with the
-> near-black extra-bold label "Send feedback". Directly beneath it, centred, a
+> near-black extra-bold label "Send feedback", and above that button a small
+> 13px uppercase wide-tracked label "ADDITIONAL COMMENTS" with a three-row text
+> area beneath it — a darker navy `#0A1626` fill, 2px muted slate `#2C4259`
+> border, 8px radius, and the muted placeholder "Tell us more about your
+> experience…" — followed by one line of muted helper text. Directly beneath the
+> send button, centred, a
 > small 13px uppercase wide-tracked muted blue-grey text link "NO THANKS". Flat
 > dark UI, no gradients, no shadows, no glass, high contrast, generous spacing.

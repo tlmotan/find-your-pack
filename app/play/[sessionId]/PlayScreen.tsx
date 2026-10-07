@@ -4,6 +4,7 @@ import { useRef } from "react";
 
 import { BlockWipe } from "@/components/play/BlockWipe";
 import { Countdown } from "@/components/play/Countdown";
+import { FeedbackSheet } from "@/components/play/FeedbackSheet";
 import { HiddenScreen } from "@/components/play/HiddenScreen";
 import { RevealScreen } from "@/components/play/RevealScreen";
 import { StatusScreen } from "@/components/play/StatusScreen";
@@ -53,6 +54,9 @@ export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCod
         view={{ ...view, screen: ended.screen }}
         packSize={packSize}
         connection={connection}
+        // The columns are still in the air while the wipe runs, so the sheet
+        // waits rather than making its entrance behind them.
+        endedReady={ended.phase === null}
       />
       <BlockWipe phase={wipe ?? ended.phase} />
     </>
@@ -64,11 +68,13 @@ function PlayerScreenBody({
   view: { screen, secondsLeft },
   packSize,
   connection,
+  endedReady,
 }: {
   state: MyState | null;
   view: PlayerScreenState;
   packSize: number;
   connection: ConnectionView;
+  endedReady: boolean;
 }) {
 
   // Only when nothing has ever loaded. With state in hand a failed poll changes
@@ -108,7 +114,13 @@ function PlayerScreenBody({
       return <StatusScreen title="This game hasn’t opened yet" />;
 
     case "ended":
-      return <StatusScreen title="This game has ended" />;
+      // The feedback sheet rises over this on its own. Nothing is sent
+      // anywhere: see the header of FeedbackSheet.tsx.
+      return (
+        <FeedbackSheet ready={endedReady}>
+          <StatusScreen title="That’s a wrap" />
+        </FeedbackSheet>
+      );
 
     default:
       return <StatusScreen title="Loading…" />;

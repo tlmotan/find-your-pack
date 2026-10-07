@@ -218,6 +218,44 @@ pushed apart (`flex items-end justify-between`). Carries pack size on the left,
 state on the right ("Keep this page open" / "Reconnecting…" / "Flag struck" /
 "Hiding in 8s"). Every player screen ends with one.
 
+**Rating buttons** — five equal square cells, `flex-1 aspect-square rounded-md
+border-2` with the emoji at `text-3xl`. Unselected `border-rule` on the sheet's
+own fill; selected `border-accent bg-accent/[0.08]` — the yellow tint is the
+faintest use of accent in the app, because five filled yellow squares would
+shout louder than the reveal. Emoji, never stars and never an icon library: the
+app loads no icons, and a face needs no legend. Each button carries its word as
+an `aria-label` ("Bad"… "Great") and its state as `aria-pressed`, so the row is
+never colour alone.
+
+**Reason chips** — `rounded-pill min-h-11 border-2 px-4`, multi-select, wrapping
+onto as many rows as they need. Unselected `border-rule text-chalk` on a
+transparent fill; selected flips to `bg-accent font-bold text-on-accent` with the
+border going accent too, so the geometry doesn't shift under the thumb. The
+chips are the complete answer: a player who taps nothing else has still said
+something useful.
+
+**Comment field** — the one open text box in the app, and a fenced one. A
+`textarea` at `rows={3}`, `resize-none`, on `bg-ground` so it reads as a well
+cut into the raised sheet rather than another panel on it; `border-2
+border-rule` going accent with a 3px yellow ring on focus, like every other
+input. It comes **last**, after the taps, so nobody has to type in a loud hall
+to be heard, and it is labelled "Additional comments" with the placeholder
+"Tell us more about your experience…".
+
+Hard rule 1 is the reason it is fenced rather than simply absent: an open box is
+where someone types a name. The fence is a 300-character cap, a counter that
+appears only in the last 50, and a visible "Please don't include anyone's name."
+None of that is enforcement — **whatever consumes these answers must strip or
+review them**, and that is a server-side decision, not a styling one.
+
+**Feedback sheet** — `components/play/FeedbackSheet.tsx`, flush to the left,
+right and bottom edges at `min-h-[66dvh]`, capped at `max-h-[92dvh]` with
+`overflow-y-auto` so the comment box can't push content off the top of a short
+phone, `rounded-t-md border-t border-rule
+bg-ground-raised`, `px-5 pt-7` and a bottom pad of
+`max(1.5rem,env(safe-area-inset-bottom))`. No shadow and no scrim — see §6 — and
+its arrival is §7.
+
 **Signal flag** — `components/play/SignalFlag.tsx`, geometry in SVG at a 60×40
 viewBox, zero bytes over the wire and crisp from a 40px chip to a full-bleed
 band. Always `aria-hidden`, always beside the name that carries the meaning.
@@ -252,8 +290,15 @@ not a gap to fill. Before adding a border, try 32px of space.
 There is no elevation. Surfaces are distinguished by fill (`ground-raised`) and
 a hairline (`rule`) — never a shadow. No blur, no glass, no layered
 translucency: they cost GPU on the old phones this app is built for. The only
-`z-index` in the app belongs to the hide warning (`z-10`) and the block wipe
-(`z-50`), both of which are overlays rather than raised surfaces.
+`z-index` in the app belongs to the hide warning (`z-10`), the feedback sheet
+(`z-40`) and the block wipe (`z-50`) — all overlays rather than raised surfaces.
+The feedback sheet is the test of this rule: a bottom sheet is where every other
+design system reaches for a shadow and a blurred scrim. This one gets neither.
+It is `ground-raised` with a 1px `rule` along its top edge, flush to the left,
+right and bottom edges so it reads as a panel that has arrived rather than a
+card floating over the screen. The screen behind it is dimmed by its own
+`opacity`, never by a scrim laid on top: it fades toward the same ground it
+already sits on, so nothing gains a grey film.
 
 ## 7. Motion
 
@@ -268,8 +313,10 @@ holds still so that reads as the moment it is. All of it is CSS keyframes in
 | `.count-strike` | 200ms | Each countdown numeral, keyed so it replays |
 | `.drop-in` | 260ms | Each second of the hide warning, arriving from above |
 | `.wipe-col` | 200ms per column, 60ms stagger | Five signal-colour columns, red never touching blue |
+| `.sheet-rise` / `.sheet-dim` | 600ms `cubic-bezier(.22,1,.36,1)`, 200ms delay | The feedback sheet travelling up from below the bottom edge while the ended screen dims to 0.45 |
 
-The 300ms cap holds for everything except the hoist and the block wipe. The
+The 300ms cap holds for everything except the hoist, the block wipe and the
+feedback sheet. The
 wipe's timings are `WIPE_*` in `lib/player-screen.ts`: 5 columns × 200ms with a
 60ms stagger, so 440ms to cover and 440ms to clear. It runs on two transitions,
 for two different reasons:
@@ -284,9 +331,24 @@ for two different reasons:
   transition shows a group. `isEndedWipe()` keeps it to that one pair, and no
   other screen change animates.
 
+The feedback sheet is the third exception, and the only transition rather than
+keyframes. Its timings are `SHEET_*` in `lib/feedback-sheet.ts`: the ended screen
+is left alone for 200ms, then the sheet travels `translateY(100%) → 0` over
+600ms while the screen behind it dims to 0.45 on the same curve, so the two read
+as one movement. 600ms because a sheet has weight — a 300ms rise reads as a
+modal popping in, which is the wrong event. It is an exit from the game, not a
+dialog interrupting it, so there is no scrim, no blur, no focus trap, and no
+button opens it: `useSheetEntrance` starts the sequence the moment the ended
+screen is actually on show, which means *after* the hidden → ended wipe's
+columns have cleared, never behind them. The sheet is `inert` until it settles,
+because a chip sliding out from under a thumb mid-press is how someone sends an
+answer they did not mean.
+
 `prefers-reduced-motion: reduce` kills every animation and transition globally.
 The wipe's resting state is above the screen, so with motion off it simply never
-appears.
+appears. The sheet's resting state is below it, so instead `useSheetEntrance`
+starts at `settled`: it is already in place on the first frame, dim and all,
+rather than sitting off screen for a delay and then jumping.
 
 ## 8. Accessibility
 
@@ -322,8 +384,8 @@ appears.
 
 **Don't**
 - Don't load a web font, an icon library, or an illustration set.
-- Don't animate past 300ms except the hoist and the two wipes, and honour
-  `prefers-reduced-motion`.
+- Don't animate past 300ms except the hoist, the two wipes and the feedback
+  sheet, and honour `prefers-reduced-motion`.
 - Don't set text or a control in signal red or signal blue.
 - Don't give a flag a white ground, or let red touch blue inside one.
 - Don't put two primary buttons on one screen.
