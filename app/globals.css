@@ -187,49 +187,6 @@ textarea {
   animation: drop-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ---------------------------------------------------------------------------
-   Block wipe: five columns drop in to cover the screen, the content underneath
-   is swapped while nothing can be seen, then the columns drop out. Used only on
-   the countdown -> reveal handover, so the flag arrives rather than appearing.
-
-   Cosmetic only. The overlay sits above the screen and changes no timing: the
-   reveal and hide windows stay exactly as long as the server says.
-   --------------------------------------------------------------------------- */
-@keyframes block-wipe-cover {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes block-wipe-clear {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100%);
-  }
-}
-
-.block-wipe-col {
-  /* --i is the column index, 0-4; the stagger is what makes it read as a wipe
-     travelling left to right rather than a single curtain. */
-  animation-duration: 270ms;
-  animation-timing-function: cubic-bezier(0.76, 0, 0.24, 1);
-  animation-delay: calc(var(--i) * 60ms);
-  animation-fill-mode: both;
-}
-
-.block-wipe-cover .block-wipe-col {
-  animation-name: block-wipe-cover;
-}
-
-.block-wipe-clear .block-wipe-col {
-  animation-name: block-wipe-clear;
-}
-
 /* The halyard: a hairline the flag runs up, drawn rather than decorated. */
 .halyard {
   background-image: linear-gradient(
@@ -285,41 +242,5 @@ textarea {
   *::after {
     animation: none !important;
     transition: none !important;
-  }
-
-  /* The blanket rule above would also kill the wipe's fallback, leaving the
-     swap to happen with no cover at all. The columns instead fade as one
-     sheet: no stagger, no travel, and short enough not to be motion. */
-  .block-wipe-col {
-    animation-delay: 0ms !important;
-    animation-duration: 120ms !important;
-    animation-timing-function: linear !important;
-    transform: none !important;
-  }
-
-  .block-wipe-cover .block-wipe-col {
-    animation-name: block-wipe-fade-in !important;
-  }
-
-  .block-wipe-clear .block-wipe-col {
-    animation-name: block-wipe-fade-out !important;
-  }
-}
-
-@keyframes block-wipe-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes block-wipe-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
   }
 }

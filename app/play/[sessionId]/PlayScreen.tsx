@@ -1,5 +1,6 @@
 "use client";
 
+import { BlockWipe } from "@/components/play/BlockWipe";
 import { Countdown } from "@/components/play/Countdown";
 import { HiddenScreen } from "@/components/play/HiddenScreen";
 import { RevealScreen } from "@/components/play/RevealScreen";
@@ -50,47 +51,38 @@ function PlayerScreenBody({
 
   const reconnecting = connection === "reconnecting";
 
-  // The wipe runs on the countdown -> reveal handover and nowhere else: the
-  // flag's own hoist and the hide warning already own their moments, and a
-  // wipe over either would compete rather than add.
-  const wipeKey = screen === "revealed" || screen === "countdown" ? screen : "other";
+  switch (screen) {
+    case "waiting":
+      return <WaitingScreen reconnecting={reconnecting} />;
 
-  const body = () => {
-    switch (screen) {
-      case "waiting":
-        return <WaitingScreen reconnecting={reconnecting} />;
+    case "countdown":
+      return <Countdown secondsLeft={secondsLeft ?? 0} />;
 
-      case "countdown":
-        return <Countdown secondsLeft={secondsLeft ?? 0} />;
+    case "revealed":
+      // Only a reveal state carries the group. Anything else here is a race
+      // between the tick and a refetch; hold the countdown rather than flash
+      // a blank screen.
+      if (state?.status !== "reveal") return <Countdown secondsLeft={0} />;
+      return (
+        <RevealScreen
+          name={state.group.name}
+          emoji={state.group.emoji}
+          soundHint={state.group.sound_hint}
+          packSize={state.pack_size}
+          secondsLeft={secondsLeft ?? 0}
+        />
+      );
 
-      case "revealed":
-        // Only a reveal state carries the group. Anything else here is a race
-        // between the tick and a refetch; hold the countdown rather than flash
-        // a blank screen.
-        if (state?.status !== "reveal") return <Countdown secondsLeft={0} />;
-        return (
-          <RevealScreen
-            name={state.group.name}
-            emoji={state.group.emoji}
-            soundHint={state.group.sound_hint}
-            packSize={state.pack_size}
-            secondsLeft={secondsLeft ?? 0}
-          />
-        );
+    case "hidden":
+      return <HiddenScreen packSize={packSizeOf(state)} reconnecting={reconnecting} />;
 
-      case "hidden":
-        return <HiddenScreen packSize={packSizeOf(state)} reconnecting={reconnecting} />;
+    case "not_open":
+      return <StatusScreen title="This game hasn’t opened yet" />;
 
-      case "not_open":
-        return <StatusScreen title="This game hasn’t opened yet" />;
+    case "ended":
+      return <StatusScreen title="This game has ended" />;
 
-      case "ended":
-        return <StatusScreen title="This game has ended" />;
-
-      default:
-        return <StatusScreen title="Loading…" />;
-    }
-  };
-
-  return <BlockWipe wipeKey={wipeKey}>{body()}</BlockWipe>;
+    default:
+      return <StatusScreen title="Loading…" />;
+  }
 }
