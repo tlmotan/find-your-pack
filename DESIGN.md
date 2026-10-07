@@ -195,6 +195,9 @@ app is built for.
 **Don't**
 - Don't load a web font, an icon library, or an illustration set.
 - Don't animate anything longer than 300ms, and honour `prefers-reduced-motion`.
+  The one exception is the reveal → hidden block wipe (~0.9s in total, five
+  signal-colour columns); it starts before the hide so the flag is never shown
+  past its window, and it does not play with reduced motion.
 - Don't put two primary buttons on one screen.
 - Don't use uppercase, letter-spaced labels — the join code is the only exception.
 - Don't show a spinner where a disabled button with changed text will do.

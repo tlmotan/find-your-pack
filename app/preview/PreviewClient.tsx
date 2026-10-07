@@ -12,10 +12,12 @@
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
+import { BlockWipe } from "@/components/play/BlockWipe";
 import { Countdown } from "@/components/play/Countdown";
 import { HiddenScreen } from "@/components/play/HiddenScreen";
 import { RevealScreen } from "@/components/play/RevealScreen";
 import { WaitingScreen } from "@/components/play/WaitingScreen";
+import { useBlockWipe } from "@/hooks/useBlockWipe";
 import { usePlayerScreen } from "@/hooks/usePlayerScreen";
 import { COUNTDOWN_SECONDS } from "@/lib/constants";
 import { packFlag } from "@/lib/pack-flag";
@@ -36,7 +38,9 @@ export function PreviewClient() {
 
   // null = not running. When set, the real hook drives the screens.
   const [live, setLive] = useState<MyState | null>(null);
-  const { screen, secondsLeft } = usePlayerScreen(live, 0);
+  const liveView = usePlayerScreen(live, 0);
+  const { screen, secondsLeft } = liveView;
+  const wipe = useBlockWipe(liveView);
 
   // Placed on mount, because the viewport size is not known on the server.
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -146,6 +150,7 @@ export function PreviewClient() {
   return (
     <div className="relative">
       {stage()}
+      <BlockWipe phase={wipe} />
 
       {pos ? (
         <div className="fixed z-50" style={{ left: pos.x, top: pos.y }}>
