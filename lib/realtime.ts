@@ -4,7 +4,9 @@
 
 import { getSupabase } from "./supabase/client";
 
-export type SessionEvent = "started" | "ended";
+// "opened" lets phones already waiting at the door join themselves; the other
+// two move phones already in the game.
+export type SessionEvent = "opened" | "started" | "ended";
 
 export const channelName = (joinCode: string) => `session:${joinCode}`;
 
@@ -39,6 +41,7 @@ export function onSessionEvent(joinCode: string, handler: (event: SessionEvent) 
   const channel = supabase.channel(channelName(joinCode));
 
   channel
+    .on("broadcast", { event: "opened" }, () => handler("opened"))
     .on("broadcast", { event: "started" }, () => handler("started"))
     .on("broadcast", { event: "ended" }, () => handler("ended"))
     .subscribe();

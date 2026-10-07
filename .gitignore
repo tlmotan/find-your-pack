@@ -3,6 +3,8 @@ node_modules/
 .pnp
 .pnp.js
 .yarn/install-state.gz
+*.png
+*.jpeg
 
 # Next.js build output
 .next/

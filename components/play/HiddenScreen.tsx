@@ -3,9 +3,9 @@
 // The flag is struck. An empty halyard where the field was is the whole point —
 // the screen has deliberately stopped being useful, and the room has to work.
 
-type Props = { packSize: number };
+type Props = { packSize: number; reconnecting?: boolean };
 
-export function HiddenScreen({ packSize }: Props) {
+export function HiddenScreen({ packSize, reconnecting = false }: Props) {
   return (
     <main className="flex min-h-dvh flex-col bg-ground px-5 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -20,7 +20,9 @@ export function HiddenScreen({ packSize }: Props) {
 
       <div className="flex items-end justify-between border-t border-rule pt-4 text-[13px] font-semibold tracking-[0.14em] text-chalk-dim uppercase">
         <span className="tabular-nums">{packSize} in your pack</span>
-        <span>Flag struck</span>
+        <span className={reconnecting ? "text-signal-yellow" : undefined}>
+          {reconnecting ? "Reconnecting…" : "Flag struck"}
+        </span>
       </div>
     </main>
   );

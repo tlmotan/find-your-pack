@@ -17,16 +17,20 @@ function packSizeOf(state: MyState | null): number {
 }
 
 export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCode: string }) {
-  const { state, clockOffsetMs, error } = useMyState(sessionId, joinCode);
+  const { state, clockOffsetMs, connection } = useMyState(sessionId, joinCode);
   const { screen, secondsLeft } = usePlayerScreen(state, clockOffsetMs);
 
-  if (error) {
+  // Only when nothing has ever loaded. With state in hand a failed poll changes
+  // nothing the player can see, so the screen stays and the footer says so.
+  if (connection === "lost") {
     return <StatusScreen title="Lost the connection" body="Checking again in a moment…" />;
   }
 
+  const reconnecting = connection === "reconnecting";
+
   switch (screen) {
     case "waiting":
-      return <WaitingScreen />;
+      return <WaitingScreen reconnecting={reconnecting} />;
 
     case "countdown":
       return <Countdown secondsLeft={secondsLeft ?? 0} />;
@@ -47,7 +51,7 @@ export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCod
       );
 
     case "hidden":
-      return <HiddenScreen packSize={packSizeOf(state)} />;
+      return <HiddenScreen packSize={packSizeOf(state)} reconnecting={reconnecting} />;
 
     case "not_open":
       return <StatusScreen title="This game hasn’t opened yet" />;

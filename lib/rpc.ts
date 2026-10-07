@@ -1,12 +1,16 @@
 // Typed wrappers around the Postgres RPC functions (ARCHITECTURE.md §5).
 // UI code calls these, never supabase.rpc() directly.
 
+import { RPC_TIMEOUT_MS } from "./constants";
 import { getSupabase } from "./supabase/client";
 import type { CreateSessionResult, HostState, JoinResult, MyState } from "./types";
 import type { CreateSessionInput, UpdateSettingsInput } from "./validation";
+import { withTimeout } from "./with-timeout";
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
-  const { data, error } = await getSupabase().rpc(fn, args);
+  // Bounded so a request that never answers cannot stall the caller. The poll
+  // loop in useMyState depends on every call settling.
+  const { data, error } = await withTimeout(getSupabase().rpc(fn, args), RPC_TIMEOUT_MS, fn);
   if (error) throw new Error(`${fn} failed: ${error.message}`);
   return data as T;
 }
