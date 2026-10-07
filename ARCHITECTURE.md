@@ -275,7 +275,9 @@ All small, but confirm with the k6 test against the real Supabase project, since
 | Host secret stays private | It sits in the URL fragment (`/host/{id}#key=…`), which browsers never send to servers or logs. |
 | Fake broadcast events are harmless | Events carry no data; phones always re-check with the server. |
 | Early scans not counted | `join_session` creates no row while `scheduled`. |
-| Data retention | `end_session` deletes immediately; otherwise pg_cron deletes expired sessions (7 days max). |
+| Data retention | `end_session` deletes immediately; otherwise pg_cron deletes expired sessions (7 days max). Feedback is swept daily at 30 days. |
+| Feedback is write-only to the app | `submit_feedback` inserts and returns `{ok}`. There is no read function, because the anon key is public: any function that returned feedback would return it to anyone with devtools. The host reads the table in the Supabase dashboard. |
+| Feedback is unauthenticated, and bounded instead | By the time it is sent the session is deleted, so no secret or token survives to check. Every field is range- or length-checked in SQL, and nothing can be read back, so the worst a crafted call achieves is a junk row. The mitigation if that ever happens is to drop the function; the game runs without it. |
 
 ## 8. Frontend structure
 ```

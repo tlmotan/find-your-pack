@@ -9,6 +9,21 @@
 // group, so unlike the reveal math it does no security work: if a timer is
 // late the player simply sees the sheet arrive late.
 
+import type { PlayerScreen } from "./types";
+
+/**
+ * Whether this phone actually took part, and so has anything to rate.
+ *
+ * "ended" is what a phone is told for a game the host ended, a session that
+ * expired, AND a join code that never existed — join_session cannot tell them
+ * apart, because ending a game deletes the row it would have checked. Without
+ * this gate, mistyping a code would be answered with a feedback form for a
+ * game you never played.
+ */
+export function countsAsPlayed(screen: PlayerScreen): boolean {
+  return screen === "revealed" || screen === "hidden";
+}
+
 /** The ended screen is left alone this long before the sheet starts moving. */
 export const SHEET_DELAY_MS = 200;
 /** How long the sheet takes to travel from below the viewport to its rest. */

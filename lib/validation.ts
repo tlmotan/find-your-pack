@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EXPIRES_IN_DAYS, GROUP_OPTIONS, REVEAL_SECONDS } from "./constants";
+import { EXPIRES_IN_DAYS, FEEDBACK, GROUP_OPTIONS, REVEAL_SECONDS } from "./constants";
 
 // Zod schemas for every input that crosses a boundary (form → RPC, URL → page).
 // The database re-checks the same limits with CHECK constraints.
@@ -27,3 +27,18 @@ export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
 /** 6 characters, no 0/O or 1/I lookalikes. Matches the DB CHECK constraint. */
 export const joinCodeSchema = z.string().regex(/^[A-HJ-NP-Z2-9]{6}$/);
+
+/**
+ * One post-game feedback response.
+ *
+ * The comment is trimmed and capped here as well as in SQL. This schema is
+ * convenience, not protection — the browser is not a security boundary, so the
+ * d1 migration re-checks every one of these limits.
+ */
+export const feedbackSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  reasons: z.array(z.string().trim().min(1).max(40)).max(FEEDBACK.maxReasons),
+  comment: z.string().trim().max(FEEDBACK.commentMaxLength),
+  join_code: joinCodeSchema.nullable(),
+});
+export type FeedbackInput = z.infer<typeof feedbackSchema>;

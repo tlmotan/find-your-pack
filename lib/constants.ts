@@ -8,6 +8,8 @@ export const ACTIVE_CUTOFF_SECONDS = 60;
 export const REVEAL_SECONDS = { min: 2, max: 30, default: 5 } as const;
 export const EXPIRES_IN_DAYS = { min: 1, max: 7, default: 7 } as const;
 export const GROUP_OPTIONS = { min: 2, max: 20, nameMaxLength: 30 } as const;
+/** Post-game feedback. Mirrored by the CHECK constraints in the d1 migration. */
+export const FEEDBACK = { commentMaxLength: 300, maxReasons: 10 } as const;
 export const MAX_DEFAULT_GROUPS = 10;
 export const MIN_PER_PACK = 3;
 export const MIN_PLAYERS_TO_START = 2;

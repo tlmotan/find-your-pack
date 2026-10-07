@@ -98,6 +98,19 @@ Icebreakers that split people into secret groups usually rely on paper slips.
 | A4 | Group assignments are never sent to a phone before Start, or after its reveal window ends, so they can't be found by inspecting the page. | Must |
 | A5 | Use distinct, easy sounds for the animal preset: cow, dog, cat, duck, sheep, chicken, pig, monkey, frog, snake; spares owl and lion. | Must |
 
+### 6.4 Post-game feedback
+Added after v1 scope was set. It is an explicit, narrow exception to "no
+tracking or analytics": it collects opinions a player chooses to give at the
+end, never behaviour, and never anything that identifies them.
+
+| ID | Requirement | Priority |
+|---|---|---|
+| F1 | After the host ends the game, a player who actually played is offered a one-screen rating: five faces, a few fixed reason chips, and an optional comment. Everyone else — expired session, mistyped code — is only told the game ended. | Should |
+| F2 | Sending is optional and dismissible, and a failed send is never shown to the player. The game is over; there is nothing useful they could do about it. | Must |
+| F3 | Responses hold no name, email, device token or session reference — only a rating, chips, the comment, the join code, and a timestamp. | Must |
+| F4 | Responses outlive the session they came from, and are deleted after 30 days. | Must |
+| F5 | Only the host reads them, in the Supabase dashboard. No part of the app can read a response back. | Must |
+
 ## 7. Non-functional requirements
 | Area | Requirement |
 |---|---|

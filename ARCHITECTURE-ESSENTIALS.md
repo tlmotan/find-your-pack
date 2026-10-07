@@ -30,6 +30,9 @@ groups(id, session_id FK cascade, name, emoji?, sound_hint?, sort_order)   -- cr
 participants(id, session_id FK cascade, device_token_hash, group_id? FK,
              joined_at, last_seen_at, assigned_at?, revealed_at?)
   unique(session_id, device_token_hash)
+feedback(id, created_at, rating [1-5], reasons text[] [<=10], comment [<=300], join_code?)
+  -- NO FK to sessions, on purpose: end_session deletes the session, and the
+  -- feedback sheet only appears because that row is already gone.
 ```
 - Animal preset lives in `lib/themes.ts` (10 groups + owl and lion as spares).
 - `group_options` is always stored on the session (preset copied from `lib/themes.ts`, or custom names), because Postgres can't read app code. Names 1–30 characters.
@@ -45,6 +48,7 @@ participants(id, session_id FK cascade, device_token_hash, group_id? FK,
 | `end_session(id, secret)` | host | Delete session (cascade). Host page broadcasts `ended` first. |
 | `join_session(join_code, device_token)` | device | `not_open` / `ended` / upsert row. |
 | `get_my_state(id, device_token)` | device | Heartbeat; assign if started and unassigned; enforce reveal window. |
+| `submit_feedback(rating, reasons, comment, join_code)` | — | Insert one post-game response. Write-only: no read function exists, because the anon key is public. Host reads the table in the Supabase dashboard. |
 
 ## Assignment [§5.1–5.2]
 - Formula: `G = override ?? clamp(floor(N_active/3), 1, min(10, len(list)))`, and never more than `len(list)`.
@@ -86,4 +90,5 @@ tests/ assignment.test.ts | load/start.js
 - No group after `window_end`; a phone that first checks in late still gets a full reveal.
 - Inactive players are skipped at Start but assigned on check-in; Start fails with <2 active players or before `open_lobby`.
 - Expired sessions rejected; no join while `scheduled`.
+- Feedback survives `end_session`; anon can call `submit_feedback` but cannot SELECT the table; only a player who reached a reveal is asked.
 - k6: 150–300 phones against the real project. Dry run: lock a phone at Start, scan from an in-app browser.

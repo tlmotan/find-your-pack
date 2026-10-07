@@ -4,7 +4,7 @@
 import { RPC_TIMEOUT_MS } from "./constants";
 import { getSupabase } from "./supabase/client";
 import type { CreateSessionResult, HostState, JoinResult, MyState } from "./types";
-import type { CreateSessionInput, UpdateSettingsInput } from "./validation";
+import type { CreateSessionInput, FeedbackInput, UpdateSettingsInput } from "./validation";
 import { withTimeout } from "./with-timeout";
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -51,3 +51,19 @@ export const joinSession = (joinCode: string, deviceToken: string) =>
 
 export const getMyState = (sessionId: string, deviceToken: string) =>
   call<MyState>("get_my_state", { p_session_id: sessionId, p_device_token: deviceToken });
+
+// Feedback ----------------------------------------------------------------
+/**
+ * Write one post-game response (PRD F1).
+ *
+ * Unauthenticated on purpose: by the time this is called the session has been
+ * deleted, so there is no secret or token left to prove anything with. See the
+ * d1 migration for why that is acceptable here and nowhere else.
+ */
+export const submitFeedback = (i: FeedbackInput) =>
+  call<{ ok: true }>("submit_feedback", {
+    p_rating: i.rating,
+    p_reasons: i.reasons,
+    p_comment: i.comment,
+    p_join_code: i.join_code,
+  });
