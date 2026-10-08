@@ -48,6 +48,20 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
     }
   }
 
+  // Checked BEFORE the host secret, not after: ending the game deliberately
+  // clears the secret in the same render that sets this, so the other order
+  // greeted a host who had just ended a game with "your link is broken".
+  if (ended) {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-ground px-6 py-12 text-center">
+        <div className="max-w-[440px]">
+          <h1 className="text-title text-balance font-extrabold tracking-[-0.02em] text-chalk">Game ended</h1>
+          <p className="mt-3 text-lg text-chalk-dim">Everything has been deleted. Nothing was kept.</p>
+        </div>
+      </main>
+    );
+  }
+
   if (!hostSecret) {
     return (
       <main className="grid min-h-dvh place-items-center bg-ground px-6 py-12 text-center">
@@ -59,17 +73,6 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
             Open the full link you saved — the part after the <code className="font-mono text-signal-yellow">#</code>{" "}
             is what proves you&rsquo;re the host.
           </p>
-        </div>
-      </main>
-    );
-  }
-
-  if (ended) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-ground px-6 py-12 text-center">
-        <div className="max-w-[440px]">
-          <h1 className="text-title text-balance font-extrabold tracking-[-0.02em] text-chalk">Game ended</h1>
-          <p className="mt-3 text-lg text-chalk-dim">Everything has been deleted. Nothing was kept.</p>
         </div>
       </main>
     );
@@ -156,7 +159,8 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
                     await endSession(sessionId, hostSecret);
                     setEnded(true);
                     // Stops useHostState polling a session that no longer
-                    // exists; the ended screen is checked before this matters.
+                    // exists. Safe only because the ended screen is checked
+                    // above the missing-key screen — both land in one render.
                     setHostSecret(null);
                   })
                 }

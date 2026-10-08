@@ -25,20 +25,28 @@ If a request conflicts with these docs, **stop and ask** instead of guessing.
 ## Stack
 - Next.js (App Router) + TypeScript (strict) + Tailwind, deployed on Vercel.
 - Supabase Postgres with RPC functions, Realtime **Broadcast** only, pg_cron.
-- Supporting libraries: qrcode.react, Zod, Vitest, k6.
+- Supporting libraries: qrcode.react, Zod, Vitest, Playwright, k6.
 
 ## Commands
 ```bash
 npm run dev                          # Next.js dev server
 npm run lint                         # ESLint
 npm run typecheck                    # tsc --noEmit
-npm test                             # Vitest
+npm test                             # Vitest (pure logic only)
+npm run test:e2e                     # Playwright: the whole game in a real browser
+npm run test:e2e:ui                  # the same, in Playwright's UI mode
 npx supabase start                   # local Supabase (Docker)
 npx supabase migration new <name>    # create a migration file
 npx supabase db reset                # rebuild local DB from migrations
 k6 run tests/load/start.js           # load test (against a real project only when asked)
 ```
 If a script doesn't exist yet, add it to `package.json` rather than inventing a different command.
+
+`npm test` covers pure functions only — nothing in `tests/*.test.ts` renders a component, so a
+screen that throws passes it. `npm run test:e2e` is what catches that: it drives a whole game
+(create → open lobby → two phones → Start → reveal → hidden → End) in a real browser and fails on
+any uncaught exception or console error. It needs the local Supabase stack up (`npm run db:start`)
+and always talks to `127.0.0.1:54321`, never the hosted project.
 
 ## Hard rules (never break these)
 1. **No personal data.** Never add name, email, phone, or account fields, or any tracking or analytics.
