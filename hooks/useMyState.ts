@@ -7,15 +7,18 @@
 //   is restored: a player checking Instagram mid-lobby is the normal case, not
 //   an edge one.
 // - Tracks the server clock offset from server_now
+// - Recovers from "not_joined" (the server has no participant row for this
+//   phone) by re-joining once and re-checking a few times before showing the
+//   player anything about it (NOT_JOINED_RECHECKS).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { connectionView, type ConnectionView } from "@/lib/connection";
-import { START_JITTER_MS } from "@/lib/constants";
+import { NOT_JOINED_RECHECKS, START_JITTER_MS } from "@/lib/constants";
 import { getDeviceToken } from "@/lib/device-token";
 import { pollIntervalMs } from "@/lib/poll";
 import { onSessionEvent } from "@/lib/realtime";
-import { getMyState } from "@/lib/rpc";
+import { getMyState, joinSession } from "@/lib/rpc";
 import { computeClockOffset } from "@/lib/server-clock";
 import type { MyState } from "@/lib/types";
 
@@ -25,6 +28,31 @@ export type UseMyState = {
   error: string | null;
   connection: ConnectionView;
 };
+
+/**
+ * The fix for "not_joined": re-join, then ask again.
+ *
+ * A phone with no participant row reads as "not_joined" forever, and polling
+ * cannot change that — only join_session can make the row. It still refuses
+ * while the lobby is shut, so this cannot sneak anyone in early.
+ *
+ * Returns null for "that didn't help", leaving the state as it was. A failure
+ * here must never surface as a connection error: the player would be told their
+ * network is broken when the real problem is a lost spot.
+ */
+async function rejoinThenFetch(sessionId: string, joinCode: string): Promise<MyState | null> {
+  try {
+    const joined = await joinSession(joinCode, getDeviceToken());
+    // A different id would mean this code now belongs to another game; codes are
+    // unique per session, so that should be impossible. Bail rather than show
+    // someone another game's state.
+    if (joined.status !== "joined" || joined.session_id !== sessionId) return null;
+
+    return await getMyState(sessionId, getDeviceToken());
+  } catch {
+    return null;
+  }
+}
 
 export function useMyState(sessionId: string, joinCode: string): UseMyState {
   const [state, setState] = useState<MyState | null>(null);
@@ -36,11 +64,42 @@ export function useMyState(sessionId: string, joinCode: string): UseMyState {
   // restart every time that state changes — a ref keeps the loop stable.
   const stateRef = useRef<MyState | null>(null);
 
+  // How many "not_joined" answers in a row, which is what decides whether the
+  // poll loop asks again (pollIntervalMs), and a latch so the re-join is
+  // attempted once per streak rather than on every poll.
+  const notJoinedStreak = useRef(0);
+  const triedRejoin = useRef(false);
+
   const refresh = useCallback(async () => {
     try {
-      const next = await getMyState(sessionId, getDeviceToken());
+      let next = await getMyState(sessionId, getDeviceToken());
+
+      if (next.status === "not_joined") {
+        notJoinedStreak.current += 1;
+
+        // Without the code from the QR link there is nothing to re-join with,
+        // so the answer has to stand.
+        if (joinCode !== "" && !triedRejoin.current) {
+          triedRejoin.current = true;
+          next = (await rejoinThenFetch(sessionId, joinCode)) ?? next;
+        }
+      }
+
+      if (next.status !== "not_joined") {
+        notJoinedStreak.current = 0;
+        triedRejoin.current = false;
+      }
+
+      // The ref drives the poll cadence, so it always holds the truth. What the
+      // player SEES lags it on purpose while we are still trying: telling
+      // someone to scan the QR code again, only to pull them back into the game
+      // a moment later, is worse than a couple of seconds of the old screen.
       stateRef.current = next;
-      setState(next);
+
+      const stillTrying =
+        next.status === "not_joined" && notJoinedStreak.current < NOT_JOINED_RECHECKS;
+
+      if (!stillTrying) setState(next);
 
       // Only waiting and reveal carry server_now; every one of them re-anchors
       // the offset, so a phone whose clock drifts mid-game keeps up.
@@ -56,10 +115,11 @@ export function useMyState(sessionId: string, joinCode: string): UseMyState {
       setError(e instanceof Error ? e.message : "Could not reach the game");
       setFailures((n) => n + 1);
     }
-  }, [sessionId]);
+  }, [sessionId, joinCode]);
 
   // Poll. A timeout chain rather than setInterval, because the gap changes with
-  // the state and must be able to stop entirely once the session has ended.
+  // the state and must be able to stop entirely once there is nothing left to
+  // learn (the session ended, or the spot is gone for good).
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -71,7 +131,7 @@ export function useMyState(sessionId: string, joinCode: string): UseMyState {
         // Scheduling in `finally` so nothing — not even an unexpected throw —
         // can leave the loop dead for the rest of the session.
         if (!cancelled) {
-          const next = pollIntervalMs(stateRef.current);
+          const next = pollIntervalMs(stateRef.current, notJoinedStreak.current);
           if (next !== null) timer = setTimeout(() => void tick(), next);
         }
       }

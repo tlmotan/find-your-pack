@@ -62,7 +62,8 @@ feedback(id, created_at, rating [1-5], reasons text[] [<=10], comment [<=300], j
 my_reveal_at = greatest(session.reveal_at, assigned_at + 3s)
 revealed_at  = set once, the first time the group is returned
 window_end   = greatest(my_reveal_at, revealed_at) + reveal_seconds + 3s
-get_my_state → not_open | waiting | reveal{group, pack_size, my_reveal_at, server_now} | hidden{pack_size} | ended
+get_my_state → not_open | waiting | reveal{group, pack_size, my_reveal_at, server_now} | hidden{pack_size} | not_joined | ended
+not_joined = no participant row for this device (recoverable). ended = session gone or expired (final).
 ```
 
 ## Update channels [§6]
@@ -70,6 +71,7 @@ get_my_state → not_open | waiting | reveal{group, pack_size, my_reveal_at, ser
 |---|---|
 | Start/End | Broadcast `session:{join_code}`: `started`, `ended`. Phones wait 0–500 ms jitter, then fetch. |
 | Missed broadcast | Phone polls every 5 s while waiting. |
+| A lost spot (`not_joined`) | The phone re-joins once, then polls every 5 s for `NOT_JOINED_RECHECKS` answers, holding its current screen. Only then does it show `lost_spot` ("scan the QR code again"). `ended` is believed at once and stops the loop. |
 | Pack size | Phone polls every 10 s after reveal, and on `visibilitychange`. |
 | Host dashboard | Polls `get_host_state` every 3 s. |
 
@@ -81,7 +83,7 @@ lib/  supabase/client.ts | device-token.ts | server-clock.ts | themes.ts | assig
 supabase/migrations/   # all schema, RLS lock-down, functions, cron — migrations only
 tests/ assignment.test.ts | load/start.js
 ```
-- **Player screen states:** `joining → waiting → countdown → revealed → hidden`, plus `not_open` and `ended`.
+- **Player screen states:** `joining → waiting → countdown → revealed → hidden`, plus `not_open`, `lost_spot` and `ended`.
 - **Env:** only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. No service-role key in v1.
 
 ## Must-test [§10]

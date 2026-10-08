@@ -440,6 +440,10 @@ Screen-by-screen intent:
   numeral above it, absolutely positioned so arriving costs no layout shift.
 - **Hidden** (`HiddenScreen`) — the bare halyard again. "Make your sound!" at
   flag-name size in yellow. The screen has deliberately stopped being useful.
+- **Lost spot** (`StatusScreen`) — "We lost your spot", then "Scan the QR code
+  again to get back in." Shown only after the phone has quietly failed to
+  re-join itself, and deliberately not phrased as an ending: the game is
+  probably still running without them, and the player has something to do.
 - **Ended** (`StatusScreen`) — "This game has ended". The columns wipe across
   from the hidden screen into it, so the game closes the way it opened.
 - **Host dashboard** (`HostDashboard`) — projector-facing. Title plus status

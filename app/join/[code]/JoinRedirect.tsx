@@ -55,11 +55,12 @@ export function JoinRedirect({ joinCode }: { joinCode: string }) {
     // Fast path: the host announces the lobby and every waiting phone lets
     // itself in. Jittered because join_session is a write and the whole room
     // hears this in the same instant — see JOIN_JITTER_MS.
-    const unsubscribe = onSessionEvent(joinCode, (event) => {
-      if (event === "ended") {
-        setPhase("ended");
-        return;
-      }
+    // Every event, "ended" included, means the same thing here: ask the server
+    // again. The channel is public, so an event is a nudge and never a fact
+    // (hard rule 6) — trusting a bare "ended" let anyone holding the join code
+    // strand the room on a dead screen, and made one duplicated or late event
+    // enough to do it by accident.
+    const unsubscribe = onSessionEvent(joinCode, () => {
       setTimeout(() => void attempt(), Math.random() * JOIN_JITTER_MS);
     });
 

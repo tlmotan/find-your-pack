@@ -140,7 +140,7 @@ export function FeedbackForm({ className = "", onSubmit, onCancel }: FeedbackFor
       />
       <div className="mt-2 flex items-start justify-between gap-3">
         <p id={commentHintId} className="text-[15px] text-chalk-dim">
-          Optional. Please don&rsquo;t include anyone&rsquo;s name.
+          Optional.
         </p>
         {comment.length >= COMMENT_COUNTER_FROM ? (
           <p aria-hidden="true" className="shrink-0 text-[15px] tabular-nums text-chalk-dim">

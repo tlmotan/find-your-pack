@@ -34,6 +34,9 @@ describe("derivePlayerScreen — pass-through states", () => {
       [{ status: "not_open" }, "not_open"],
       [{ status: "waiting", server_now: iso(T0) }, "waiting"],
       [{ status: "hidden", pack_size: 10 }, "hidden"],
+      // not_joined is its own screen, never "ended": the game is probably still
+      // running, and the player is asked to scan the QR code again.
+      [{ status: "not_joined" }, "lost_spot"],
       [{ status: "ended" }, "ended"],
     ];
     for (const [state, screen] of cases) {

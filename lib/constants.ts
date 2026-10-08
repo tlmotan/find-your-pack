@@ -29,7 +29,24 @@ export const POLL_MS = {
   /** Waiting at the door for the lobby to open. Slow on purpose: the broadcast
    *  is the fast path and this only covers a dropped websocket. */
   notOpen: 10_000,
+  /** Trying to get a phone its spot back. See NOT_JOINED_RECHECKS. */
+  notJoined: 5_000,
 } as const;
+
+/**
+ * How many "not_joined" answers a phone absorbs before giving up and asking the
+ * player to scan the QR code again.
+ *
+ * "not_joined" means the server has no participant row for this device — a
+ * browser that lost its device token, or a phone that reached /play without
+ * going through /join. It is recoverable: re-joining makes the row. So the phone
+ * re-joins once and keeps asking for a few polls, showing nothing alarming
+ * while it does, rather than stranding the player on a dead screen.
+ *
+ * Bounded both ways: three re-checks is ~15 s of quiet recovery, and after that
+ * the honest answer is a screen that tells the player what to do.
+ */
+export const NOT_JOINED_RECHECKS = 3;
 
 /** Spread over the reveal fetch. Tight, because every phone must reveal
  *  together. */

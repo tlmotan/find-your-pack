@@ -14,7 +14,14 @@ describe("countsAsPlayed", () => {
   it("is false for everyone who never played", () => {
     // "ended" covers a mistyped join code and an expired session as well as a
     // game the host ended, so none of them may open a feedback form.
-    const never: PlayerScreen[] = ["joining", "not_open", "waiting", "countdown", "ended"];
+    const never: PlayerScreen[] = [
+      "joining",
+      "not_open",
+      "waiting",
+      "countdown",
+      "lost_spot",
+      "ended",
+    ];
     for (const screen of never) expect(countsAsPlayed(screen)).toBe(false);
   });
 });

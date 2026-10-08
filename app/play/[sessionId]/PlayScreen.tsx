@@ -145,6 +145,17 @@ function PlayerScreenBody({
     case "not_open":
       return <StatusScreen title="This game hasn’t opened yet" />;
 
+    case "lost_spot":
+      // The server has no row for this phone and re-joining did not fix it, so
+      // the QR code is the only way back in. Deliberately not "the game has
+      // ended": the game is probably still running without them.
+      return (
+        <StatusScreen
+          title="We lost your spot"
+          body="Scan the QR code again to get back in."
+        />
+      );
+
     case "ended":
       // Only someone who actually played is asked to rate it. Everyone else —
       // an expired session, a mistyped code — just gets told.

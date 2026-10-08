@@ -46,6 +46,10 @@ export function derivePlayerScreen(
       return { screen: "waiting", secondsLeft: null };
     case "hidden":
       return { screen: "hidden", secondsLeft: null };
+    case "not_joined":
+      // Only ever reached once useMyState has given up re-joining; while it is
+      // still trying, the phone keeps showing whatever it showed before.
+      return { screen: "lost_spot", secondsLeft: null };
     case "ended":
       return { screen: "ended", secondsLeft: null };
     case "reveal":

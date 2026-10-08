@@ -74,6 +74,9 @@ export type MyState =
       server_now: string;
     }
   | { status: "hidden"; pack_size: number }
+  /** The server has no participant row for this device (d2 migration). Not the
+   *  same as "ended": the game may well still be running. */
+  | { status: "not_joined" }
   | { status: "ended" };
 
 export type HostState = {
@@ -94,4 +97,6 @@ export type PlayerScreen =
   | "countdown"
   | "revealed"
   | "hidden"
+  /** We lost this phone's spot; the only way back in is the QR code. */
+  | "lost_spot"
   | "ended";

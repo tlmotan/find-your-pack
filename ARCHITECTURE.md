@@ -229,12 +229,15 @@ Handled **in real life**. Packs announce when they reach their pack size; the ho
 |---|---|---|
 | Start / End signal to phones | Realtime Broadcast on `session:{join_code}` (`started`, `ended`), sent by the host page | Instant |
 | Fallback for a missed broadcast | Phone polls `get_my_state` while waiting | Every 5 s |
+| Recovering a lost spot (`not_joined`) | Phone re-joins once, then polls `get_my_state` | Every 5 s, `NOT_JOINED_RECHECKS` times, then stop |
 | Pack size after reveal | Phone polls `get_my_state` | Every 10 s, and when the tab becomes visible again |
 | Host lobby count and group sizes | Host polls `get_host_state` | Every 3 s |
 
-- Broadcast events carry **no data**. On any event, a phone just calls `get_my_state`. A prankster sending a fake `started` therefore changes nothing.
+- Broadcast events carry **no data**. On any event, a phone just calls `get_my_state` (or `join_session`, on the join screen). A prankster sending a fake `started` — or a fake `ended` — therefore changes nothing: no screen changes until the server says so.
 - On `started`, each phone waits a random 0–500 ms before fetching. This spreads the burst, and `reveal_at` keeps the reveal simultaneous anyway.
 - On `visibilitychange` (phone unlocked or tab reopened), the phone calls `get_my_state` immediately.
+- `not_joined` is **recovered from, not displayed**. `get_my_state` returns it when there is no participant row for this device — a browser that lost its device token, or a phone that reached `/play` without going through `/join`. The phone re-joins once (`join_session` is the only thing that can recreate the row, and it still refuses while the lobby is shut) and keeps polling every 5 s for `NOT_JOINED_RECHECKS` answers, holding whatever screen it already had. Only when those are spent does it show the `lost_spot` screen, which asks the player to scan the QR code again. Bounded in both directions: no silent dead end, and no phone polling forever.
+- `ended` is final and believed at once: the session row is gone or expired, so there is nothing left to discover and the phone stops polling. Before the d2 migration `ended` also covered the `not_joined` case, which told players the host had ended a game that was still running — and because polling stopped, only a refresh cleared it.
 
 ### 6.2 Start and reveal sequence
 ```mermaid
