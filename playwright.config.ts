@@ -27,7 +27,14 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
 
 const PORT = 3100; // Not 3000: a dev server you already have open stays untouched.
-const BASE_URL = `http://127.0.0.1:${PORT}`;
+const REMOTE_BASE_URL = process.env.E2E_BASE_URL;
+if (REMOTE_BASE_URL && process.env.E2E_ALLOW_REMOTE !== "1") {
+  throw new Error("Set E2E_ALLOW_REMOTE=1 to explicitly allow a hosted Playwright target.");
+}
+if (REMOTE_BASE_URL && !REMOTE_BASE_URL.startsWith("https://")) {
+  throw new Error("E2E_BASE_URL must use HTTPS when testing a remote site.");
+}
+const BASE_URL = REMOTE_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -61,7 +68,10 @@ export default defineConfig({
   // on a handset; the host dashboard is wide but it is the same DOM.
   projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 5"] } }],
 
-  webServer: {
+  ...(REMOTE_BASE_URL
+    ? {}
+    : {
+        webServer: {
     // next dev, not a production build: the point is the fastest loop that still
     // exercises real components. CI can afford `build && start` later.
     command: `npx next dev --port ${PORT}`,
@@ -74,5 +84,6 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
     },
-  },
+        },
+      }),
 });

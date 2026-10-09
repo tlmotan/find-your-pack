@@ -27,7 +27,7 @@ const JOIN_JITTER_MS = 2_000;
 const RPC_TIMEOUT_MS = 10_000;
 
 const PHONES = Number(__ENV.PHONES || 150);
-const START_COMMIT_MS = Number(__ENV.START_COMMIT_MS || 1_000);
+const START_COMMIT_MS = Number(__ENV.START_COMMIT_MS || 5_000);
 const AFTER_START_SECONDS = Number(__ENV.AFTER_START_SECONDS || 60);
 
 const URL = __ENV.SUPABASE_URL;
@@ -43,6 +43,8 @@ const waitPollMs = new Trend("fyp_waiting_poll_ms", true);
 const revealBurstMs = new Trend("fyp_reveal_burst_ms", true);
 const afterRevealPollMs = new Trend("fyp_after_reveal_poll_ms", true);
 const revealedOk = new Rate("fyp_revealed_ok");
+const hiddenOk = new Rate("fyp_hidden_ok");
+const endedOk = new Rate("fyp_ended_ok");
 const rpcErrors = new Counter("fyp_rpc_errors");
 
 export const options = {
@@ -63,6 +65,8 @@ export const options = {
     "fyp_waiting_poll_ms": ["p(95)<1500"],
     "fyp_join_ms": ["p(95)<2000"],
     "fyp_revealed_ok": ["rate==1.0"],
+    "fyp_hidden_ok": ["rate==1.0"],
+    "fyp_ended_ok": ["rate==1.0"],
     "fyp_rpc_errors": ["count==0"],
   },
 };
@@ -139,13 +143,23 @@ export default function () {
 
   // --- After the reveal: back off, as the client does. ---
   const until = Date.now() + AFTER_START_SECONDS * 1000;
+  let hidden = false;
+  let ended = false;
   while (Date.now() < until) {
     sleep(POLL_AFTER_REVEAL_MS / 1000);
     const res = myState();
     afterRevealPollMs.add(res.timings.duration);
     const s = body(res);
     check(res, { "after-reveal poll ok": (r) => r.status === 200 });
+    if (s && s.status === "hidden") hidden = true;
     // Stop for good once the session ends, rather than hammer a dead session.
-    if (s && s.status === "ended") break;
+    if (s && s.status === "ended") {
+      ended = true;
+      break;
+    }
   }
+  hiddenOk.add(hidden);
+  endedOk.add(ended);
+  check({ hidden }, { "reveal window ended before session": (state) => state.hidden });
+  check({ ended }, { "session ended during test": (state) => state.ended });
 }
