@@ -71,9 +71,15 @@ export type MyState =
       pack_size: number;
       my_reveal_at: string;
       reveal_seconds: number;
+      /** Which round this is (e1 migration). A new round re-stamps my_reveal_at,
+       *  which is what makes the phone count down and reveal again — so nothing
+       *  on the player side needs to read this; it is here to be asserted in
+       *  tests and read in the console. Optional for the same reason as
+       *  HostState.round: a client deployed ahead of the migration won't get it. */
+      round?: number;
       server_now: string;
     }
-  | { status: "hidden"; pack_size: number }
+  | { status: "hidden"; pack_size: number; round?: number }
   /** The server has no participant row for this device (d2 migration). Not the
    *  same as "ended": the game may well still be running. */
   | { status: "not_joined" }
@@ -87,6 +93,16 @@ export type HostState = {
   expires_at: string;
   active_count: number;
   group_sizes: { name: string; emoji: string | null; size: number }[]; // empty before Start
+  /** 0 until Start, then 1 and up — one per round the host has run (e1 migration).
+   *  Optional for the same reason as can_start_next_round: a client deployed
+   *  ahead of the migration must render something sane without it. */
+  round?: number;
+  /** The server's own answer to "would start_next_round succeed right now?".
+   *  Computed in _host_state rather than from reveal_at, because the host page
+   *  has no clock offset and a fast laptop would light the button up mid-reveal.
+   *  Optional so a client deployed ahead of the migration simply never enables
+   *  the button. */
+  can_start_next_round?: boolean;
 };
 
 /** Player screen states (ARCHITECTURE.md §8). */

@@ -1,7 +1,9 @@
 "use client";
 
-// Open lobby / Start / End buttons, enabled by status (PRD H1b, H5, H7).
-// Start is disabled below MIN_PLAYERS_TO_START active players.
+// Open lobby / Start / Start round N / End buttons, enabled by status
+// (PRD H1b, H5, H10, H7). Start is disabled below MIN_PLAYERS_TO_START active
+// players; Start round N is disabled until the server says the call would
+// succeed (can_start_next_round), which includes waiting out the reveal.
 
 import { useEffect, useRef, useState } from "react";
 
@@ -13,13 +15,14 @@ type Props = {
   busy?: boolean;
   onOpenLobby: () => void;
   onStart: () => void;
+  onNextRound: () => void;
   onEnd: () => void;
 };
 
 const primary =
   "rounded-pill h-14 w-full bg-accent text-lg font-extrabold tracking-[-0.01em] text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-pressed active:scale-[0.98] disabled:bg-ground-raised disabled:text-chalk-dim disabled:active:scale-100";
 
-export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd }: Props) {
+export function HostControls({ state, busy = false, onOpenLobby, onStart, onNextRound, onEnd }: Props) {
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const enoughPlayers = state.active_count >= MIN_PLAYERS_TO_START;
 
@@ -60,6 +63,30 @@ export function HostControls({ state, busy = false, onOpenLobby, onStart, onEnd 
             {enoughPlayers
               ? "Everyone reveals at the same moment."
               : `Waiting for ${MIN_PLAYERS_TO_START} players to join.`}
+          </p>
+        </>
+      ) : null}
+
+      {state.status === "started" ? (
+        <>
+          <button
+            type="button"
+            className={primary}
+            // The server's own answer to "would this call succeed?", so the
+            // button and the RPC can never disagree. Explicitly === true: a
+            // client deployed ahead of the migration gets undefined and simply
+            // leaves the button disabled rather than offering a call that fails.
+            disabled={busy || state.can_start_next_round !== true}
+            onClick={onNextRound}
+          >
+            {busy ? "Starting…" : `Start round ${(state.round ?? 1) + 1}`}
+          </button>
+          <p className="mt-4 text-center text-[15px] text-chalk-dim">
+            {state.can_start_next_round === true
+              ? "Everyone gets a new pack."
+              : enoughPlayers
+                ? "Wait for the reveal to finish."
+                : `Waiting for ${MIN_PLAYERS_TO_START} players to come back.`}
           </p>
         </>
       ) : null}

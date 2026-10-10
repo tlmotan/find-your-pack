@@ -86,3 +86,135 @@ function shuffledIndices(count: number, random: () => number): number[] {
   }
   return indices;
 }
+
+/**
+ * Index of the smallest group, preferring one that isn't `avoid` (ties → lowest index).
+ * Used for a player who arrived late or whose phone was asleep when the round was dealt.
+ *
+ * Size wins over avoidance on purpose: letting "a different pack than last round"
+ * outrank size would let a handful of waking phones all skip the smallest pack and
+ * push sizes past ±1. So the no-repeat rule is absolute for a round's deal
+ * (reassignAvoidingPrevious) and a tie-break here.
+ */
+export function pickSmallestGroupAvoiding(groupSizes: number[], avoid: number | null): number {
+  if (groupSizes.length === 0) {
+    throw new Error("pickSmallestGroupAvoiding: no groups");
+  }
+
+  const smallest = Math.min(...groupSizes);
+  // Among the groups tied for smallest, the first that isn't the one to avoid.
+  for (const [index, size] of groupSizes.entries()) {
+    if (size === smallest && index !== avoid) return index;
+  }
+
+  // The group to avoid is the only smallest one. Take it: ±1 matters more.
+  return pickSmallestGroup(groupSizes);
+}
+
+/**
+ * Deal everyone again so that nobody keeps the group they had last round (PRD A6),
+ * while sizes stay within ±1 (PRD A2).
+ *
+ * `prevGroupByPlayer[i]` is player i's group last round, or null if they had none.
+ * Returns a group index per player.
+ *
+ * Mirrors _deal_round(…, p_avoid_previous => true) in the e1 migration — that SQL is
+ * what actually runs; this exists so the algorithm can be proved in tests.
+ *
+ * Rotating whole packs (new = old + 1) would also guarantee a change, but it moves
+ * every pack intact, so the same people find each other again. Instead: deal at
+ * random, then repair the players who kept their group ("collisions") by swapping.
+ * A swap exchanges two group indexes, so it can never change a pack's size.
+ *
+ * Two groups is handled separately and first, because the answer there is forced —
+ * everyone crosses over — and it is also the one case the repair below cannot
+ * always finish (see Pass B).
+ *
+ *   Pass A — two collisions in different groups fix each other in one swap.
+ *   Pass B — after Pass A every remaining collision sits in the same group, so each
+ *            needs an outside partner: a non-colliding player elsewhere whose own
+ *            previous group isn't the one we're leaving. Such a partner always
+ *            exists once there are 3+ groups: it could only be missing if every
+ *            player outside group X had come from X, which balanced sizes make
+ *            impossible unless G <= 2.
+ *
+ * Anything still colliding is accepted rather than thrown: at a live event, one
+ * player repeating an animal beats failing the round.
+ */
+export function reassignAvoidingPrevious(
+  prevGroupByPlayer: (number | null)[],
+  groupCount: number,
+  random: () => number = Math.random,
+): number[] {
+  const dealt = assignBalanced(prevGroupByPlayer.length, groupCount, random);
+
+  // With one group there is nowhere else to send anyone.
+  if (groupCount < 2) return dealt;
+
+  const prevOf = (player: number): number | null => prevGroupByPlayer[player] ?? null;
+
+  // Two groups: everyone crosses over. Sizes stay within ±1 because the previous
+  // two sizes were, and this only exchanges them. Anyone with no previous group
+  // has nothing to avoid, so they fill whichever side is smaller.
+  if (groupCount === 2) {
+    const crossed = new Array<number>(prevGroupByPlayer.length);
+    const sizes = [0, 0];
+    for (const player of range(prevGroupByPlayer.length)) {
+      const prev = prevOf(player);
+      if (prev === null) continue;
+      const group = 1 - prev;
+      crossed[player] = group;
+      sizes[group] = (sizes[group] ?? 0) + 1;
+    }
+    for (const player of range(prevGroupByPlayer.length)) {
+      if (prevOf(player) !== null) continue;
+      const group = (sizes[0] ?? 0) <= (sizes[1] ?? 0) ? 0 : 1;
+      crossed[player] = group;
+      sizes[group] = (sizes[group] ?? 0) + 1;
+    }
+    return crossed;
+  }
+
+  const groupByPlayer = dealt;
+
+  // An accessor rather than raw indexing, because strict mode types every index
+  // as possibly undefined. -1 is unreachable for a player in range.
+  const groupOf = (player: number): number => groupByPlayer[player] ?? -1;
+
+  const isCollision = (player: number) => prevOf(player) !== null && groupOf(player) === prevOf(player);
+
+  const swap = (a: number, b: number) => {
+    const held = groupOf(a);
+    groupByPlayer[a] = groupOf(b);
+    groupByPlayer[b] = held;
+  };
+
+  const collisions = () => range(prevGroupByPlayer.length).filter(isCollision);
+
+  // Pass A: pair collisions off against each other.
+  let pending = collisions();
+  for (const a of pending) {
+    if (!isCollision(a)) continue; // already fixed as someone else's partner
+    const partner = pending.find((b) => b !== a && isCollision(b) && groupOf(b) !== groupOf(a));
+    if (partner !== undefined) swap(a, partner);
+  }
+
+  // Pass B: whatever is left swaps with a player who isn't a collision.
+  pending = collisions();
+  for (const a of pending) {
+    const leaving = groupOf(a);
+    const partner = range(prevGroupByPlayer.length).find(
+      (b) => b !== a && groupOf(b) !== leaving && prevOf(b) !== leaving && !isCollision(b),
+    );
+    // No partner exists for this one, so none exists for any of the rest either:
+    // they all sit in the same group with the same history. Accept the repeats.
+    if (partner === undefined) break;
+    swap(a, partner);
+  }
+
+  return groupByPlayer;
+}
+
+function range(count: number): number[] {
+  return Array.from({ length: count }, (_, i) => i);
+}

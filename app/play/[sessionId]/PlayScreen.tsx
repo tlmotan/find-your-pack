@@ -10,7 +10,7 @@ import { RevealScreen } from "@/components/play/RevealScreen";
 import { StatusScreen } from "@/components/play/StatusScreen";
 import { WaitingScreen } from "@/components/play/WaitingScreen";
 import { useBlockWipe } from "@/hooks/useBlockWipe";
-import { useEndedWipe } from "@/hooks/useEndedWipe";
+import { useSwapWipe } from "@/hooks/useSwapWipe";
 import { useMyState } from "@/hooks/useMyState";
 import { usePlayerScreen } from "@/hooks/usePlayerScreen";
 import type { ConnectionView } from "@/lib/connection";
@@ -58,7 +58,8 @@ export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCod
   const { state, clockOffsetMs, connection } = useMyState(sessionId, joinCode);
   const view = usePlayerScreen(state, clockOffsetMs);
   const wipe = useBlockWipe(view);
-  const ended = useEndedWipe(view.screen);
+  // Covers both the end of the game and the start of a new round.
+  const swap = useSwapWipe(view.screen);
   const packSize = useLastPackSize(state);
   const played = usePlayed(view.screen);
 
@@ -77,16 +78,16 @@ export function PlayScreen({ sessionId, joinCode }: { sessionId: string; joinCod
     <>
       <PlayerScreenBody
         state={state}
-        view={{ ...view, screen: ended.screen }}
+        view={{ ...view, screen: swap.screen }}
         packSize={packSize}
         connection={connection}
         // The columns are still in the air while the wipe runs, so the sheet
         // waits rather than making its entrance behind them.
-        endedReady={ended.phase === null}
+        endedReady={swap.phase === null}
         askFeedback={played}
         onFeedback={sendFeedback}
       />
-      <BlockWipe phase={wipe ?? ended.phase} />
+      <BlockWipe phase={wipe ?? swap.phase} />
     </>
   );
 }

@@ -12,6 +12,7 @@ const reveal: MyState = {
   pack_size: 3,
   my_reveal_at: iso,
   reveal_seconds: 15,
+  round: 1,
   server_now: iso,
 };
 

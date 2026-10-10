@@ -129,14 +129,43 @@ export function isWipeCovering({ screen, secondsLeft }: PlayerScreenState): bool
 }
 
 /**
- * True for the one screen change that also wipes: hidden → ended.
+ * hidden → ended: the host ended the game.
+ *
+ * See isHeldWipe for why this is kept so narrow.
+ */
+export function isEndedWipe(from: PlayerScreen, to: PlayerScreen): boolean {
+  return from === "hidden" && to === "ended";
+}
+
+/**
+ * hidden → countdown: the host started another round.
+ *
+ * Only the countdown, never straight to "revealed". A phone that wakes up with
+ * a reveal already running has no countdown to wipe into, and holding its old
+ * screen would eat into the little reveal time it has left.
+ *
+ * The cost is WIPE_COVER_MS × 2 of a COUNTDOWN_SECONDS countdown — about 0.9s
+ * of 3, and the countdown is already running underneath. Measured in a browser:
+ * the columns clear while the numeral still reads "3", but only for ~0.2s
+ * before it ticks over, so what the player actually watches is a flash of 3 and
+ * then a full second each of 2 and 1. A phone that hears about the round late
+ * loses that flash too. Either way the columns are gone well before
+ * my_reveal_at, so the wipe spends countdown and never the reveal itself.
+ */
+export function isNextRoundWipe(from: PlayerScreen, to: PlayerScreen): boolean {
+  return from === "hidden" && to === "countdown";
+}
+
+/**
+ * The screen changes that wipe rather than cut.
  *
  * Narrow on purpose. The hook that reads this holds the old screen on for
  * WIPE_COVER_MS so the swap happens under the columns, and a hold is only ever
  * safe where neither side shows a group — otherwise it would keep a reveal on
- * screen past its window, which hard rule 5 forbids. Anything involving
+ * screen past its window, which hard rule 5 forbids. Both pairs here start at
+ * "hidden" and end somewhere with no group on it. Anything involving
  * "revealed" must stay instant.
  */
-export function isEndedWipe(from: PlayerScreen, to: PlayerScreen): boolean {
-  return from === "hidden" && to === "ended";
+export function isHeldWipe(from: PlayerScreen, to: PlayerScreen): boolean {
+  return isEndedWipe(from, to) || isNextRoundWipe(from, to);
 }

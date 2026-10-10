@@ -12,24 +12,28 @@ Quick reference for critical decisions only. Full detail: `ARCHITECTURE.md` (sec
 ## Non-negotiable rules
 1. **No personal data.** Players = random **device token** (`crypto.randomUUID()` in `localStorage`). Host = **host secret** in the link fragment `/host/{id}#key=…`. Store only SHA-256 hashes of both. [§1, §7]
 2. **Tables are locked.** RLS on with no policies. All access goes through `SECURITY DEFINER` RPC functions (fixed `search_path`) that check tokens and reject expired sessions. [§4.2, §5]
-3. **Assignments are created at Start, never before.** [§5.1]
+3. **Assignments are created at Start, never before.** [§5.1] Groups are created once, at Start, and reused by every round; only who is in each pack changes. [§5.1a]
 4. **Same-moment reveal.** Start sets `reveal_at = now() + 3s`. Phones count down to it using `server_now` to correct their clock. [§5.3]
-5. **Server-enforced reveal window**, anchored to when the phone **first received** its group (`revealed_at`), not to Start. After `window_end`, never return the group again. [§5.3]
+5. **Server-enforced reveal window**, anchored to when the phone **first received** its group (`revealed_at`), not to Start. After `window_end`, never return the group again. [§5.3] Per **round**: a new round clears `revealed_at` and opens a new window, it never reopens a finished one.
 6. **Broadcast events carry no data.** On any event, phones call `get_my_state`. [§6.1]
 7. **Only active phones are assigned at Start** (`last_seen_at` within 60 s). Others are assigned to the smallest group when they next check in. [§5.1–5.2]
 8. **No joins before Open lobby.** While `scheduled`, `join_session` returns `not_open` and creates no row. Start needs ≥2 active players.
 9. **Sessions expire** 1–7 days after creation (default 7). `end_session` deletes immediately; pg_cron deletes expired sessions.
-10. **Finding your pack happens in real life.** No in-app "found" or "last" tracking in v1.
+10. **Never the same animal twice in a row.** A new round deals the room again and no player keeps their previous pack (A6). Absolute for the deal; a tie-break only for a phone that wakes mid-round, where ±1 sizes win. [§5.1a]
+11. **Finding your pack happens in real life.** No in-app "found" or "last" tracking in v1.
 
 ## Data model [§4]
 ```
 sessions(id, join_code UK, host_secret_hash, theme_key? (label only), group_options jsonb [2–20],
          group_count_override?, reveal_seconds=5 [2–30], status scheduled|lobby|started,
-         lobby_opened_at, started_at, reveal_at, created_at, expires_at)
-groups(id, session_id FK cascade, name, emoji?, sound_hint?, sort_order)   -- created at Start
+         round=0, lobby_opened_at, started_at, reveal_at, created_at, expires_at)
+  -- no "between rounds" status: a game stays 'started' and `round` moves instead
+groups(id, session_id FK cascade, name, emoji?, sound_hint?, sort_order)
+  -- created at Start, then reused by every round
 participants(id, session_id FK cascade, device_token_hash, group_id? FK,
-             joined_at, last_seen_at, assigned_at?, revealed_at?)
+             prev_group_id? FK (SET NULL), joined_at, last_seen_at, assigned_at?, revealed_at?)
   unique(session_id, device_token_hash)
+  -- group_id/assigned_at/revealed_at are all cleared at the start of each round
 feedback(id, created_at, rating [1-5], reasons text[] [<=10], comment [<=300], join_code?)
   -- NO FK to sessions, on purpose: end_session deletes the session, and the
   -- feedback sheet only appears because that row is already gone.
@@ -41,39 +45,43 @@ feedback(id, created_at, rating [1-5], reasons text[] [<=10], comment [<=300], j
 | Function | Auth | Purpose |
 |---|---|---|
 | `create_session(groups, reveal_seconds, expires_in_days)` | — | `scheduled`; returns id, join code, raw host secret (once). |
-| `get_host_state(id, secret)` | host | Status, settings, active count, group sizes. Polled every 3 s. |
+| `get_host_state(id, secret)` | host | Status, settings, active count, group sizes, `round`, `can_start_next_round`. Polled every 3 s. |
 | `update_settings(id, secret, …)` | host | Before Start only; expiry ≤ 7 days from `created_at`. |
 | `open_lobby(id, secret)` | host | `scheduled` → `lobby`. |
-| `start_session(id, secret)` | host | Needs `lobby` + ≥2 active; lock, assign, set `reveal_at`. |
-| `end_session(id, secret)` | host | Delete session (cascade). Host page broadcasts `ended` first. |
+| `start_session(id, secret)` | host | Needs `lobby` + ≥2 active; lock, create groups, assign, set `reveal_at` + `round = 1`. Idempotent: never reshuffles a running game. |
+| `start_next_round(id, secret)` | host | Needs `started`, the reveal window over (also the double-tap guard) + ≥2 active; lock, clear the room, deal again avoiding each player's last pack, bump `round`. |
+| `end_session(id, secret)` | host | Delete session (cascade). Host page broadcasts `ended` first. Still the only way a game finishes. |
 | `join_session(join_code, device_token)` | device | `not_open` / `ended` / upsert row. |
 | `get_my_state(id, device_token)` | device | Heartbeat; assign if started and unassigned; enforce reveal window. |
 | `submit_feedback(rating, reasons, comment, join_code)` | — | Insert one post-game response. Write-only: no read function exists, because the anon key is public. Host reads the table in the Supabase dashboard. |
 
-## Assignment [§5.1–5.2]
+## Assignment [§5.1–5.2, §5.1a]
 - Formula: `G = override ?? clamp(floor(N_active/3), 1, min(10, len(list)))`, and never more than `len(list)`.
 - Shuffle active participants, then assign `i mod G`. Group sizes stay within ±1.
 - Lock the session row (`SELECT … FOR UPDATE`) on Start and on every late assignment.
-- Late or waking player: smallest group (ties → lowest `sort_order`). Their reveal = `assigned_at + 3s`.
+- Late or waking player: smallest group (ties → lowest `sort_order`, then one that isn't their `prev_group_id`). Their reveal = `assigned_at + 3s`.
+- **A new round** [§5.1a]: `G` is fixed at Start. Deal as above, then repair so nobody keeps their previous pack — `G = 2` is forced (everyone crosses over); `G ≥ 3` pairs collisions with each other, then with a clean player elsewhere. A repair swaps two `group_id`s, so sizes never move. Mirrored for tests as `reassignAvoidingPrevious` in `lib/assignment.ts`.
 - Pack size = `count(participants WHERE group_id = X)`.
 
 ## Reveal window [§5.3]
 ```
 my_reveal_at = greatest(session.reveal_at, assigned_at + 3s)
-revealed_at  = set once, the first time the group is returned
+revealed_at  = set once per round, the first time the group is returned; cleared by start_next_round
 window_end   = greatest(my_reveal_at, revealed_at) + reveal_seconds + 3s
-get_my_state → not_open | waiting | reveal{group, pack_size, my_reveal_at, server_now} | hidden{pack_size} | not_joined | ended
+get_my_state → not_open | waiting | reveal{group, pack_size, my_reveal_at, round, server_now} | hidden{pack_size, round} | not_joined | ended
 not_joined = no participant row for this device (recoverable). ended = session gone or expired (final).
+A new round re-stamps reveal_at and clears revealed_at, which is the whole mechanism: the phone's
+anchor is keyed on my_reveal_at, so it counts down and reveals again with no client change.
 ```
 
 ## Update channels [§6]
 | What | How |
 |---|---|
-| Start/End | Broadcast `session:{join_code}`: `started`, `ended`. Phones wait 0–500 ms jitter, then fetch. |
+| Start/new round/End | Broadcast `session:{join_code}`: `started`, `ended`. Phones wait 0–500 ms jitter, then fetch. A new round reuses `started` — events carry no data, so a phone re-asks the server either way. |
 | Missed broadcast | Phone polls every 5 s while waiting. |
 | A lost spot (`not_joined`) | The phone re-joins once, then polls every 5 s for `NOT_JOINED_RECHECKS` answers, holding its current screen. Only then does it show `lost_spot` ("scan the QR code again"). `ended` is believed at once and stops the loop. |
 | Pack size | Phone polls every 10 s after reveal, and on `visibilitychange`. |
-| Host dashboard | Polls `get_host_state` every 3 s. |
+| Host dashboard | Polls `get_host_state` every 3 s — also how `can_start_next_round` lights up the *Start round N* button within 3 s of a reveal ending. |
 
 ## File layout [§8]
 ```
@@ -83,7 +91,7 @@ lib/  supabase/client.ts | device-token.ts | server-clock.ts | themes.ts | assig
 supabase/migrations/   # all schema, RLS lock-down, functions, cron — migrations only
 tests/ assignment.test.ts | load/start.js
 ```
-- **Player screen states:** `joining → waiting → countdown → revealed → hidden`, plus `not_open`, `lost_spot` and `ended`.
+- **Player screen states:** `joining → waiting → countdown → revealed → hidden`, plus `not_open`, `lost_spot` and `ended`. A new round sends a phone from `hidden` back to `countdown`; no new screen, and the block wipe covers the swap (one of three wiped transitions — see DESIGN.md §7).
 - **Env:** only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. No service-role key in v1.
 
 ## Must-test [§10]
@@ -91,6 +99,7 @@ tests/ assignment.test.ts | load/start.js
 - The anon key can't touch tables directly; host functions reject a wrong secret.
 - No group after `window_end`; a phone that first checks in late still gets a full reveal.
 - Inactive players are skipped at Start but assigned on check-in; Start fails with <2 active players or before `open_lobby`.
+- Rounds: no player keeps their previous pack, sizes stay ±1, `revealed_at` clears so the reveal reopens, `start_next_round` is refused mid-reveal (the double-tap guard) and with <2 active.
 - Expired sessions rejected; no join while `scheduled`.
 - Feedback survives `end_session`; anon can call `submit_feedback` but cannot SELECT the table; only a player who reached a reveal is asked.
 - k6: 150–300 phones against the real project. Dry run: lock a phone at Start, scan from an in-app browser.

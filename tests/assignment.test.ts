@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { assignBalanced, computeGroupCount, pickSmallestGroup } from "../lib/assignment";
+import {
+  assignBalanced,
+  computeGroupCount,
+  pickSmallestGroup,
+  pickSmallestGroupAvoiding,
+  reassignAvoidingPrevious,
+} from "../lib/assignment";
 import { MAX_DEFAULT_GROUPS } from "../lib/constants";
 
 /** Deterministic stand-in for Math.random so shuffles are reproducible in tests. */
@@ -138,5 +144,141 @@ describe("pickSmallestGroup", () => {
 
   it("rejects an empty group list", () => {
     expect(() => pickSmallestGroup([])).toThrow();
+  });
+});
+
+describe("pickSmallestGroupAvoiding", () => {
+  it("skips the group to avoid when another is just as small", () => {
+    expect(pickSmallestGroupAvoiding([2, 2, 2], 0)).toBe(1);
+  });
+
+  it("still takes the smallest when the group to avoid is the only smallest", () => {
+    // ±1 matters more than a repeat for a single waking phone.
+    expect(pickSmallestGroupAvoiding([1, 4, 4], 0)).toBe(0);
+  });
+
+  it("behaves like pickSmallestGroup when there is nothing to avoid", () => {
+    expect(pickSmallestGroupAvoiding([4, 4, 0], null)).toBe(2);
+    expect(pickSmallestGroupAvoiding([2, 2, 2], null)).toBe(0);
+  });
+
+  it("keeps the lowest-index tie-break among the groups it will consider", () => {
+    expect(pickSmallestGroupAvoiding([3, 3, 3, 3], 1)).toBe(0);
+    expect(pickSmallestGroupAvoiding([3, 3, 3, 3], 0)).toBe(1);
+  });
+
+  it("handles a single group by returning it", () => {
+    expect(pickSmallestGroupAvoiding([17], 0)).toBe(0);
+  });
+
+  it("rejects an empty group list", () => {
+    expect(() => pickSmallestGroupAvoiding([], null)).toThrow();
+  });
+});
+
+describe("reassignAvoidingPrevious", () => {
+  /** A balanced previous round: the deal start_session would have produced. */
+  function previousRound(playerCount: number, groupCount: number, seed = 1): number[] {
+    return assignBalanced(playerCount, groupCount, seededRandom(seed));
+  }
+
+  it("never leaves a player on the group they had, across realistic rooms", () => {
+    // PRD A6. The ranges cover a youth service (60–150) and both ends of the
+    // group list (2–20 names).
+    for (const groupCount of [2, 3, 5, 10, 20]) {
+      for (const playerCount of [2, 3, 7, 60, 120, 150, 200]) {
+        if (playerCount < groupCount) continue;
+        const prev = previousRound(playerCount, groupCount, playerCount + groupCount);
+        const next = reassignAvoidingPrevious(prev, groupCount, seededRandom(playerCount * 31 + groupCount));
+        const repeats = next.filter((group, player) => group === prev[player]);
+        expect(repeats, `N=${playerCount} G=${groupCount}`).toEqual([]);
+      }
+    }
+  });
+
+  it("keeps group sizes within ±1", () => {
+    // PRD A2. Swapping two players' groups cannot change a size, so this holds
+    // however much repair the deal needed.
+    for (const groupCount of [2, 3, 5, 10, 20]) {
+      for (const playerCount of [2, 7, 60, 121, 150, 200]) {
+        if (playerCount < groupCount) continue;
+        const prev = previousRound(playerCount, groupCount, playerCount);
+        const next = reassignAvoidingPrevious(prev, groupCount, seededRandom(playerCount + 7));
+        const sizes = sizesOf(next, groupCount);
+        expect(Math.max(...sizes) - Math.min(...sizes), `N=${playerCount} G=${groupCount}`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("gives every player exactly one valid group", () => {
+    const prev = previousRound(60, 10);
+    const next = reassignAvoidingPrevious(prev, 10, seededRandom(99));
+    expect(next).toHaveLength(60);
+    for (const group of next) {
+      expect(Number.isInteger(group)).toBe(true);
+      expect(group).toBeGreaterThanOrEqual(0);
+      expect(group).toBeLessThan(10);
+    }
+  });
+
+  it("leaves players with no previous group unconstrained", () => {
+    // Someone who joined after the last round was dealt, so they have no animal
+    // to avoid. They must still be dealt a group.
+    const prev: (number | null)[] = [null, null, null, null, null, null];
+    const next = reassignAvoidingPrevious(prev, 3, seededRandom(5));
+    expect(sizesOf(next, 3)).toEqual([2, 2, 2]);
+  });
+
+  it("mixes a previous pack across the new ones once there are 3+ groups", () => {
+    // The point of the game: a round-1 pack must not land intact in one
+    // round-2 pack, which is what rotating whole packs would have done.
+    const groupCount = 5;
+    const prev = previousRound(100, groupCount, 3);
+    const next = reassignAvoidingPrevious(prev, groupCount, seededRandom(42));
+
+    const oldPack = prev.map((group, player) => ({ group, player })).filter((p) => p.group === 0);
+    const landedIn = new Set(oldPack.map((p) => next[p.player]));
+    // 20 players spread over the 4 groups that aren't their own.
+    expect(landedIn.size).toBe(groupCount - 1);
+  });
+
+  it("swaps the room over when there are only two groups", () => {
+    // With G=2 "a different animal" forces every pack to move intact; there is
+    // no other arrangement. Sizes must still hold.
+    const prev = previousRound(40, 2, 11);
+    const next = reassignAvoidingPrevious(prev, 2, seededRandom(12));
+    for (const [player, group] of next.entries()) expect(group).not.toBe(prev[player]);
+    expect(sizesOf(next, 2)).toEqual([20, 20]);
+  });
+
+  it("deranges two packs even when the headcount is odd", () => {
+    // The tightest case there is: a full swap of two packs needs the two sizes
+    // to swap, which the generic round-robin deal cannot produce on its own.
+    // Left one forced repeat before two packs got their own branch.
+    for (const playerCount of [3, 5, 41, 151]) {
+      const prev = previousRound(playerCount, 2, playerCount);
+      const next = reassignAvoidingPrevious(prev, 2, seededRandom(playerCount));
+      expect(next.filter((group, player) => group === prev[player]), `N=${playerCount}`).toEqual([]);
+      const sizes = sizesOf(next, 2);
+      expect(Math.max(...sizes) - Math.min(...sizes)).toBe(1);
+    }
+  });
+
+  it("accepts the repeat when there is only one group", () => {
+    // Nowhere else to send anyone, and failing the round would be worse.
+    const next = reassignAvoidingPrevious([0, 0, 0], 1, seededRandom(1));
+    expect(next).toEqual([0, 0, 0]);
+  });
+
+  it("is deterministic for a seeded random", () => {
+    const prev = previousRound(60, 10, 8);
+    const a = reassignAvoidingPrevious(prev, 10, seededRandom(2024));
+    const b = reassignAvoidingPrevious(prev, 10, seededRandom(2024));
+    expect(a).toEqual(b);
+  });
+
+  it("handles a room where no player had a group at all", () => {
+    const next = reassignAvoidingPrevious([null, null], 2, seededRandom(3));
+    expect(sizesOf(next, 2)).toEqual([1, 1]);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
-// QR + settings → Open lobby → live count → Start → group sizes → End (PRD §6.1).
+// QR + settings → Open lobby → live count → Start → group sizes → Start round N
+// → End (PRD §6.1).
 
 import { useEffect, useState } from "react";
 
@@ -9,7 +10,7 @@ import { HostControls } from "@/components/host/HostControls";
 import { JoinQrCode } from "@/components/host/JoinQrCode";
 import { buildJoinLink, readHostSecretFromHash } from "@/lib/host-secret";
 import { broadcastEvent } from "@/lib/realtime";
-import { endSession, openLobby, startSession } from "@/lib/rpc";
+import { endSession, openLobby, startNextRound, startSession } from "@/lib/rpc";
 import { useHostState } from "@/hooks/useHostState";
 
 export function HostDashboard({ sessionId }: { sessionId: string }) {
@@ -93,7 +94,7 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
       <div className="mx-auto w-full max-w-[640px] lg:max-w-[1100px]">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-title text-balance font-extrabold tracking-[-0.02em] text-chalk">Find Your Pack</h1>
-          <StatusPill status={state.status} />
+          <StatusPill status={state.status} round={state.round} />
         </div>
 
         {/* Stretch, not start: the hairline on the right column is only a full
@@ -151,6 +152,16 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
                     await announce("started", state.join_code);
                   })
                 }
+                onNextRound={() =>
+                  void run(async () => {
+                    await startNextRound(sessionId, hostSecret);
+                    // Same order as Start, and for the same reason: the groups
+                    // for this round must exist before any phone asks.
+                    // Reuses the "started" event — events carry no data, so a
+                    // phone just re-asks the server either way (hard rule 6).
+                    await announce("started", state.join_code);
+                  })
+                }
                 onEnd={() =>
                   void run(async () => {
                     // Broadcast BEFORE deleting: once the row is gone there is
@@ -179,8 +190,18 @@ export function HostDashboard({ sessionId }: { sessionId: string }) {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const label = status === "scheduled" ? "Not open yet" : status === "lobby" ? "Lobby open" : "Playing";
+function StatusPill({ status, round }: { status: string; round?: number }) {
+  // Once playing, the round is the more useful thing to read off a projector
+  // than "Playing" — it tells the room which go this is. Falls back to "Playing"
+  // against a server without the rounds migration.
+  const label =
+    status === "scheduled"
+      ? "Not open yet"
+      : status === "lobby"
+        ? "Lobby open"
+        : round
+          ? `Round ${round}`
+          : "Playing";
   const tone =
     status === "lobby"
       ? "bg-accent text-on-accent"

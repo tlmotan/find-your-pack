@@ -42,6 +42,10 @@ export const openLobby = (sessionId: string, hostSecret: string) =>
 export const startSession = (sessionId: string, hostSecret: string) =>
   call<HostState>("start_session", { p_session_id: sessionId, p_host_secret: hostSecret });
 
+/** Deal the room again, everyone on a new pack. Refused while a reveal is running. */
+export const startNextRound = (sessionId: string, hostSecret: string) =>
+  call<HostState>("start_next_round", { p_session_id: sessionId, p_host_secret: hostSecret });
+
 export const endSession = (sessionId: string, hostSecret: string) =>
   call<{ ok: true }>("end_session", { p_session_id: sessionId, p_host_secret: hostSecret });
 

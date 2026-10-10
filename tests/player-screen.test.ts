@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { REVEAL_GRACE_SECONDS } from "@/lib/constants";
+import { COUNTDOWN_SECONDS, REVEAL_GRACE_SECONDS, START_JITTER_MS } from "@/lib/constants";
 import {
   WIPE_COVER_MS,
   WIPE_LEAD_MS,
   derivePlayerScreen,
   isEndedWipe,
+  isHeldWipe,
+  isNextRoundWipe,
   isRevealVisible,
   isWipeCovering,
 } from "@/lib/player-screen";
@@ -23,6 +25,7 @@ function revealState(inMs: number, revealSeconds = 5): MyState {
     pack_size: 10,
     my_reveal_at: iso(T0 + inMs),
     reveal_seconds: revealSeconds,
+    round: 1,
     server_now: iso(T0),
   };
 }
@@ -33,7 +36,7 @@ describe("derivePlayerScreen — pass-through states", () => {
       [null, "joining"],
       [{ status: "not_open" }, "not_open"],
       [{ status: "waiting", server_now: iso(T0) }, "waiting"],
-      [{ status: "hidden", pack_size: 10 }, "hidden"],
+      [{ status: "hidden", pack_size: 10, round: 1 }, "hidden"],
       // not_joined is its own screen, never "ended": the game is probably still
       // running, and the player is asked to scan the QR code again.
       [{ status: "not_joined" }, "lost_spot"],
@@ -157,7 +160,7 @@ describe("isRevealVisible", () => {
   it("is false for every non-reveal state", () => {
     expect(isRevealVisible(null, 0, T0)).toBe(false);
     expect(isRevealVisible({ status: "waiting", server_now: iso(T0) }, 0, T0)).toBe(false);
-    expect(isRevealVisible({ status: "hidden", pack_size: 3 }, 0, T0)).toBe(false);
+    expect(isRevealVisible({ status: "hidden", pack_size: 3, round: 1 }, 0, T0)).toBe(false);
   });
 });
 
@@ -213,5 +216,80 @@ describe("isEndedWipe", () => {
     expect(isEndedWipe("countdown", "ended")).toBe(false);
     expect(isEndedWipe("ended", "ended")).toBe(false);
     expect(isEndedWipe("joining", "ended")).toBe(false);
+  });
+});
+
+describe("isNextRoundWipe", () => {
+  it("fires on hidden → countdown, the start of a new round", () => {
+    expect(isNextRoundWipe("hidden", "countdown")).toBe(true);
+  });
+
+  it("does not fire on hidden → revealed", () => {
+    // A phone that woke up with a reveal already running has no countdown to
+    // wipe into, and holding its old screen would eat the little window it has.
+    expect(isNextRoundWipe("hidden", "revealed")).toBe(false);
+  });
+
+  it("never fires on a transition involving a reveal", () => {
+    const screens = ["joining", "not_open", "waiting", "countdown", "revealed", "hidden", "ended"] as const;
+    for (const to of screens) expect(isNextRoundWipe("revealed", to)).toBe(false);
+    for (const from of screens) expect(isNextRoundWipe(from, "revealed")).toBe(false);
+  });
+
+  it("does not fire on any other pair", () => {
+    expect(isNextRoundWipe("waiting", "countdown")).toBe(false);
+    expect(isNextRoundWipe("countdown", "countdown")).toBe(false);
+    expect(isNextRoundWipe("hidden", "ended")).toBe(false);
+    expect(isNextRoundWipe("lost_spot", "countdown")).toBe(false);
+  });
+});
+
+describe("isHeldWipe", () => {
+  it("covers exactly the two pairs that hold the old screen", () => {
+    const screens = ["joining", "not_open", "waiting", "countdown", "revealed", "hidden", "ended"] as const;
+    const held: [string, string][] = [];
+    for (const from of screens) {
+      for (const to of screens) if (isHeldWipe(from, to)) held.push([from, to]);
+    }
+    expect(held).toEqual([
+      ["hidden", "countdown"],
+      ["hidden", "ended"],
+    ]);
+  });
+
+  it("never holds a screen that shows a group (hard rule 5)", () => {
+    const screens = ["joining", "not_open", "waiting", "countdown", "revealed", "hidden", "ended"] as const;
+    for (const to of screens) expect(isHeldWipe("revealed", to)).toBe(false);
+  });
+
+  it("leaves the countdown-to-reveal change an instant cut", () => {
+    // The reveal must never be delayed by an animation.
+    expect(isHeldWipe("countdown", "revealed")).toBe(false);
+  });
+});
+
+describe("the new-round wipe leaves enough countdown to be a countdown", () => {
+  // The wipe costs WIPE_COVER_MS to cover and the same again to clear, and the
+  // countdown is already running underneath. What the player actually gets back
+  // depends on how late their phone heard about the round: the broadcast is
+  // jittered by up to START_JITTER_MS, plus the get_my_state round trip.
+  const countdownMs = COUNTDOWN_SECONDS * 1000;
+  const spent = WIPE_COVER_MS * 2;
+
+  it("never eats into the reveal itself", () => {
+    // The thing that must not slip. The reveal is anchored to my_reveal_at on
+    // the server clock, so the columns have to be gone before it lands —
+    // otherwise a phone spends its reveal window under them.
+    expect(spent + START_JITTER_MS).toBeLessThan(countdownMs);
+  });
+
+  it("leaves at least two numerals even on the slowest phone to hear", () => {
+    const heardLate = START_JITTER_MS + 300; // jitter plus a slow RPC
+    const left = countdownMs - heardLate - spent;
+    expect(Math.ceil(left / 1000)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("leaves the full 3 when the phone hears immediately", () => {
+    expect(Math.ceil((countdownMs - spent) / 1000)).toBe(3);
   });
 });

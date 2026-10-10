@@ -74,9 +74,10 @@ Icebreakers that split people into secret groups usually rely on paper slips.
 | H4 | See a live count of joined players in the lobby. | Must |
 | H5 | Press Start to trigger assignment and reveal. Requires at least 2 players. | Must |
 | H6 | Reopen the host dashboard from any device using the host link, until it expires. | Must |
-| H7 | End the session, which closes joining and deletes its data immediately. | Must |
+| H7 | End the session, which closes joining and deletes its data immediately. Still the only way a game finishes, however many rounds it ran. | Must |
 | H8 | See each group's size after Start, to help judge completion in real life. | Should |
 | H9 | Override the number of groups before Start. | Should |
+| H10 | Start another round once the current reveal has finished, as many times as wanted. Every player is put in a different group, and the host decides when to stop. Requires at least 2 active players, same as Start. | Must |
 
 ### 6.2 Participant
 | ID | Requirement | Priority |
@@ -97,6 +98,7 @@ Icebreakers that split people into secret groups usually rely on paper slips.
 | A3 | Assign anyone who joins after Start to the **smallest** group, and give them their own countdown and reveal. | Must |
 | A4 | Group assignments are never sent to a phone before Start, or after its reveal window ends, so they can't be found by inspecting the page. | Must |
 | A5 | Use distinct, easy sounds for the animal preset: cow, dog, cat, duck, sheep, chicken, pig, monkey, frog, snake; spares owl and lion. | Must |
+| A6 | On a new round, never give a player the group they had in the round before. Absolute for the round's deal; best-effort for a phone that wakes up mid-round, where keeping sizes within ±1 (A2) wins. Not attempted with a single group, where it is impossible. | Must |
 
 ### 6.4 Post-game feedback
 Added after v1 scope was set. It is an explicit, narrow exception to "no
@@ -168,6 +170,5 @@ end, never behaviour, and never anything that identifies them.
 - Optional host login for saved themes and session history.
 - "Hold to peek" for players who forget their animal.
 - In-app "found my pack" confirmation, with a projector view showing packs completing live and the last pack flagged automatically.
-- Multiple rounds in one session with new groups each round.
 - Custom group visuals and sounds.
 - Multi-language support (e.g. BM, Mandarin).

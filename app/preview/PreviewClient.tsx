@@ -20,7 +20,7 @@ import { RevealScreen } from "@/components/play/RevealScreen";
 import { StatusScreen } from "@/components/play/StatusScreen";
 import { WaitingScreen } from "@/components/play/WaitingScreen";
 import { useBlockWipe } from "@/hooks/useBlockWipe";
-import { useEndedWipe } from "@/hooks/useEndedWipe";
+import { useSwapWipe } from "@/hooks/useSwapWipe";
 import { usePlayerScreen } from "@/hooks/usePlayerScreen";
 import { COUNTDOWN_SECONDS } from "@/lib/constants";
 import { packFlag } from "@/lib/pack-flag";
@@ -60,9 +60,9 @@ export function PreviewClient() {
 
   // The shipping hook, fed the chip selection: hidden → ended wipes here for
   // exactly the reason it wipes on a real phone, not a preview imitation.
-  const ended = useEndedWipe(asPlayerScreen(view));
+  const swap = useSwapWipe(asPlayerScreen(view));
   // While it holds, it is holding the hidden screen under the columns.
-  const shown: View = ended.screen === "hidden" && view !== "hidden" ? "hidden" : view;
+  const shown: View = swap.screen === "hidden" && view !== "hidden" ? "hidden" : view;
 
   // Placed on mount, because the viewport size is not known on the server.
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -127,6 +127,7 @@ export function PreviewClient() {
       status: "reveal",
       group: { name: group.name, emoji: group.emoji ?? null, sound_hint: group.sound_hint ?? null },
       pack_size: packSize,
+      round: 1,
       my_reveal_at: new Date(now + COUNTDOWN_SECONDS * 1000).toISOString(),
       reveal_seconds: revealSeconds,
       server_now: new Date(now).toISOString(),
@@ -184,7 +185,7 @@ export function PreviewClient() {
   return (
     <div className="relative">
       {stage()}
-      <BlockWipe phase={wipe ?? ended.phase} />
+      <BlockWipe phase={wipe ?? swap.phase} />
 
       {pos ? (
         <div className="fixed z-50" style={{ left: pos.x, top: pos.y }}>

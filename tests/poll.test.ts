@@ -23,10 +23,11 @@ describe("pollIntervalMs", () => {
       pack_size: 10,
       my_reveal_at: iso,
       reveal_seconds: 5,
+      round: 1,
       server_now: iso,
     };
     expect(pollIntervalMs(reveal)).toBe(POLL_MS.afterReveal);
-    expect(pollIntervalMs({ status: "hidden", pack_size: 10 })).toBe(POLL_MS.afterReveal);
+    expect(pollIntervalMs({ status: "hidden", pack_size: 10, round: 1 })).toBe(POLL_MS.afterReveal);
   });
 
   it("keeps asking while a lost spot can still be recovered", () => {

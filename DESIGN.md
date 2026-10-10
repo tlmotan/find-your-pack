@@ -318,18 +318,32 @@ holds still so that reads as the moment it is. All of it is CSS keyframes in
 The 300ms cap holds for everything except the hoist, the block wipe and the
 feedback sheet. The
 wipe's timings are `WIPE_*` in `lib/player-screen.ts`: 5 columns × 200ms with a
-60ms stagger, so 440ms to cover and 440ms to clear. It runs on two transitions,
-for two different reasons:
+60ms stagger, so 440ms to cover and 440ms to clear. It runs on three
+transitions, all of them leaving or arriving at the hidden screen:
 
 - **reveal → hidden**, fired 640ms before the hide (`WIPE_LEAD_MS`) by
   `useBlockWipe`. Long on purpose, and doing security work as much as visual
   work: it starts *before* the server hides the group, so the flag is never on
   screen past its window.
-- **hidden → ended**, fired by the host ending the game (`useEndedWipe`). Purely
+- **hidden → ended**, fired by the host ending the game (`useSwapWipe`). Purely
   cosmetic. It holds the hidden screen under the columns for 440ms so the swap
-  happens unseen — a delay that is only safe because neither side of this
-  transition shows a group. `isEndedWipe()` keeps it to that one pair, and no
-  other screen change animates.
+  happens unseen.
+- **hidden → countdown**, fired by the host starting another round, also
+  `useSwapWipe`. Without it the screen cuts straight from "Make your sound!" to
+  a bare "3", which reads as a glitch rather than as the next round beginning.
+  The wipe costs about 0.9s of the 3s countdown, which is running underneath it
+  the whole time. Measured on a Pixel 5: the columns clear with the numeral
+  still on "3", but only for about 0.2s, so what the player watches is a flash
+  of 3 and then a full second each of 2 and 1 — a phone that hears about the
+  round late loses the flash as well. The columns are always gone before the
+  reveal lands, so the wipe spends countdown, never reveal.
+
+The last two hold the old screen under the columns, which is why
+`isHeldWipe()` keeps them to those exact pairs: a hold is only safe where
+neither side shows a group, or it would keep a flag on screen past its window.
+**hidden → revealed** is therefore an instant cut too, for a phone that woke up
+with a reveal already running and has little of its window left to spend. No
+other screen change animates.
 
 The feedback sheet is the third exception, and the only transition rather than
 keyframes. Its timings are `SHEET_*` in `lib/feedback-sheet.ts`: the ended screen
@@ -384,11 +398,13 @@ rather than sitting off screen for a delay and then jumping.
 
 **Don't**
 - Don't load a web font, an icon library, or an illustration set.
-- Don't animate past 300ms except the hoist, the two wipes and the feedback
+- Don't animate past 300ms except the hoist, the three wipes and the feedback
   sheet, and honour `prefers-reduced-motion`.
 - Don't set text or a control in signal red or signal blue.
 - Don't give a flag a white ground, or let red touch blue inside one.
-- Don't put two primary buttons on one screen.
+- Don't put two primary buttons on one screen. One primary plus the outlined
+  danger End game is not two — that pairing is the host dashboard at every
+  status, including "Start round N".
 - Don't use a code-book label for a sentence, or for anything read under time
   pressure.
 - Don't show a spinner where a disabled button with changed text will do.
@@ -446,9 +462,15 @@ Screen-by-screen intent:
   probably still running without them, and the player has something to do.
 - **Ended** (`StatusScreen`) — "This game has ended". The columns wipe across
   from the hidden screen into it, so the game closes the way it opened.
+- **A new round** — no new screen. The columns wipe from the hidden screen back
+  into the countdown, and the player goes round the countdown → reveal → hidden
+  loop again with a different pack.
 - **Host dashboard** (`HostDashboard`) — projector-facing. Title plus status
-  pill; QR before Start, the pack list after; the live count enormous in yellow
-  behind a hairline divider, with End game at the foot of that column.
+  pill, which reads "Round 2" once playing rather than "Playing": the round is
+  the more useful thing to read off a projector. QR before Start, the pack list
+  after; the live count enormous in yellow behind a hairline divider. One
+  primary button per status — Open lobby, Start the game, then "Start round N"
+  — with End game at the foot of that column below it.
 - **Host setup** (`SettingsForm`) — 640px column, code-book field labels, the
   theme preset as a selected card against a custom-list alternative.
 
