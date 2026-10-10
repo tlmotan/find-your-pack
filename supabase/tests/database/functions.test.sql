@@ -4,7 +4,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(93);
+select plan(116);
 
 -- -----------------------------------------------------------------------------
 -- Lock-down: RLS is on with no policies and the grants are revoked, so the anon
@@ -256,9 +256,13 @@ select isnt(
   null,
   'waiting carries server_now, so the phone can correct its clock'
 );
+-- 'not_joined', not 'ended': the d2 migration split the two so a phone that
+-- lost its device token is told to scan again instead of being told the host
+-- ended a game that is still running. This assertion still wanted the old
+-- answer and had been failing since.
 select is(
   (select public.get_my_state((s->>'session_id')::uuid, 'never-joined')->>'status' from fixture),
-  'ended',
+  'not_joined',
   'a device that never joined is not given a state'
 );
 -- The call above used a device that never joined; it must not have created one.
@@ -583,6 +587,192 @@ select is(
 select is(
   (select public.get_my_state((s->>'session_id')::uuid, 'sp1')->>'status' from settings_fixture),
   'ended', 'a phone still polling a deleted session is told it ended'
+);
+
+-- =============================================================================
+-- E1: Multiple rounds (PRD H10, A6)
+-- =============================================================================
+
+-- Its own session, so the earlier fixtures' expectations stay untouched.
+-- 11 players over 3 packs: an uneven split, which is where the repair passes
+-- actually have work to do.
+create temporary table rounds_fixture as
+  select public.create_session(
+    'animals',
+    (select jsonb_agg(jsonb_build_object('name', n, 'emoji', 'X', 'sound_hint', n || '!'))
+       from unnest(array['Cow','Dog','Cat','Duck','Sheep','Chicken','Pig','Monkey','Frog','Snake']) as n)
+    , 2, 7) as s;
+
+select is(
+  (select (public.get_host_state((s->>'session_id')::uuid, s->>'host_secret')->>'round')::int from rounds_fixture),
+  0, 'round is 0 before Start'
+);
+
+select throws_ok(
+  (select format($$ select public.start_next_round(%L::uuid, %L) $$, s->>'session_id', s->>'host_secret') from rounds_fixture),
+  'P0001', null, 'start_next_round refuses before the game is running'
+);
+
+select ok(
+  (select public.open_lobby((s->>'session_id')::uuid, s->>'host_secret')->>'status' = 'lobby' from rounds_fixture),
+  'rounds fixture lobby opens'
+);
+
+do $$
+declare v_code text; v_id uuid; i int;
+begin
+  select (s->>'join_code'), (s->>'session_id')::uuid into v_code, v_id from rounds_fixture;
+  for i in 1..11 loop
+    perform public.join_session(v_code, 'r' || i);
+  end loop;
+  update public.sessions set group_count_override = 3 where id = v_id;
+end $$;
+
+select is(
+  (select public.start_session((s->>'session_id')::uuid, s->>'host_secret')->>'status' from rounds_fixture),
+  'started', 'rounds fixture starts'
+);
+select is(
+  (select (public.get_host_state((s->>'session_id')::uuid, s->>'host_secret')->>'round')::int from rounds_fixture),
+  1, 'Start stamps round 1'
+);
+
+-- Every phone fetches once, so revealed_at is set exactly as in a real round.
+do $$
+declare i int; v_id uuid;
+begin
+  select (s->>'session_id')::uuid into v_id from rounds_fixture;
+  for i in 1..11 loop perform public.get_my_state(v_id, 'r' || i); end loop;
+end $$;
+
+select is(
+  (select (public.get_my_state((s->>'session_id')::uuid, 'r1')->>'round')::int from rounds_fixture),
+  1, 'get_my_state reports the round'
+);
+
+-- The reveal is still running, which is also the double-tap guard.
+select is(
+  (select (public.get_host_state((s->>'session_id')::uuid, s->>'host_secret')->>'can_start_next_round')::boolean from rounds_fixture),
+  false, 'can_start_next_round is false while the reveal is running'
+);
+select throws_ok(
+  (select format($$ select public.start_next_round(%L::uuid, %L) $$, s->>'session_id', s->>'host_secret') from rounds_fixture),
+  'P0001', null, 'start_next_round refuses while the reveal is still running'
+);
+
+-- Wind the reveal back so the window has closed, as it would have in the room.
+update public.sessions
+   set reveal_at = now() - interval '30 seconds'
+ where id = (select (s->>'session_id')::uuid from rounds_fixture);
+
+select is(
+  (select (public.get_host_state((s->>'session_id')::uuid, s->>'host_secret')->>'can_start_next_round')::boolean from rounds_fixture),
+  true, 'can_start_next_round opens once the reveal is over'
+);
+select throws_ok(
+  (select format($$ select public.start_next_round(%L::uuid, %L) $$, s->>'session_id', 'wrong-secret') from rounds_fixture),
+  'P0003', null, 'start_next_round rejects a wrong host secret'
+);
+
+-- Remember round 1 before it is overwritten, to check nobody repeats.
+create temporary table round1 as
+  select id, group_id from public.participants
+   where session_id = (select (s->>'session_id')::uuid from rounds_fixture);
+
+select is(
+  (select (public.start_next_round((s->>'session_id')::uuid, s->>'host_secret')->>'round')::int from rounds_fixture),
+  2, 'start_next_round moves to round 2'
+);
+
+select is(
+  (select count(*)::int from public.participants p join round1 r on r.id = p.id
+    where p.group_id = r.group_id),
+  0, 'no player keeps the pack they had last round (A6)'
+);
+select is(
+  (select count(*)::int from public.participants p join round1 r on r.id = p.id
+    where p.prev_group_id is distinct from r.group_id),
+  0, 'prev_group_id carries last round forward for everyone'
+);
+select is(
+  (select max(c)::int - min(c)::int from (
+     select count(*) c from public.participants
+      where session_id = (select (s->>'session_id')::uuid from rounds_fixture)
+        and group_id is not null
+      group by group_id) t),
+  1, 'pack sizes stay within ±1 after a reshuffle (A2)'
+);
+select is(
+  (select count(*)::int from public.groups
+    where session_id = (select (s->>'session_id')::uuid from rounds_fixture)),
+  3, 'a new round reuses the same groups rather than making more'
+);
+select is(
+  (select count(*)::int from public.participants
+    where session_id = (select (s->>'session_id')::uuid from rounds_fixture)
+      and revealed_at is not null),
+  0, 'revealed_at is cleared, so the reveal window reopens for the new round'
+);
+
+-- The whole point: the phone is given a group again, not left on 'hidden'.
+select is(
+  (select public.get_my_state((s->>'session_id')::uuid, 'r1')->>'status' from rounds_fixture),
+  'reveal', 'a phone gets a fresh reveal in the new round'
+);
+select is(
+  (select (public.get_my_state((s->>'session_id')::uuid, 'r1')->>'round')::int from rounds_fixture),
+  2, 'and is told which round it is'
+);
+
+-- A phone that was asleep for the whole round still gets assigned on waking,
+-- and still gets its own countdown (P7, A3).
+do $$
+declare v_id uuid; v_group uuid;
+begin
+  select (s->>'session_id')::uuid into v_id from rounds_fixture;
+  update public.participants
+     set group_id = null, assigned_at = null, revealed_at = null,
+         last_seen_at = now() - interval '5 minutes'
+   where session_id = v_id and device_token_hash = public._hash_token('r11');
+  perform public.get_my_state(v_id, 'r11');
+  select group_id into v_group from public.participants
+   where session_id = v_id and device_token_hash = public._hash_token('r11');
+  if v_group is null then raise exception 'a waking phone was not assigned'; end if;
+end $$;
+
+select is(
+  (select public.get_my_state((s->>'session_id')::uuid, 'r11')->>'status' from rounds_fixture),
+  'reveal', 'a phone that woke mid-round is assigned and revealed'
+);
+
+-- Below MIN_PLAYERS_TO_START the room has gone home, so a round is refused.
+do $$
+declare v_id uuid;
+begin
+  select (s->>'session_id')::uuid into v_id from rounds_fixture;
+  update public.sessions set reveal_at = now() - interval '30 seconds' where id = v_id;
+  update public.participants set last_seen_at = now() - interval '5 minutes'
+   where session_id = v_id
+     and device_token_hash <> public._hash_token('r1');
+end $$;
+
+select is(
+  (select (public.get_host_state((s->>'session_id')::uuid, s->>'host_secret')->>'can_start_next_round')::boolean from rounds_fixture),
+  false, 'can_start_next_round closes again when the room empties'
+);
+select throws_ok(
+  (select format($$ select public.start_next_round(%L::uuid, %L) $$, s->>'session_id', s->>'host_secret') from rounds_fixture),
+  'P0001', null, 'start_next_round refuses with fewer than 2 active players'
+);
+
+-- The internal helper must not be reachable with the anon key.
+select ok(
+  not has_function_privilege('anon', 'public._deal_round(uuid, int, boolean)', 'EXECUTE'),
+  'internal _deal_round is not callable with the anon key'
+);
+select ok(
+  has_function_privilege('anon', 'public.start_next_round(uuid, text)', 'EXECUTE'),
+  'start_next_round is callable with the anon key'
 );
 
 select * from finish();
